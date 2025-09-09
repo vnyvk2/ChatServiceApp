@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat App</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <script defer src="/assets/app.js"></script>
+  <link rel="icon" href="data:," />
+  <meta name="color-scheme" content="light dark" />
+  <style>html{font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;}</style>
+  </head>
+<body>
+  <main class="container" role="main">
+    <section class="auth">
+      <h1>Chat</h1>
+      <div class="auth-forms">
+        <form id="registerForm" aria-label="Register">
+          <input required id="reg-username" placeholder="Username" />
+          <input required id="reg-email" placeholder="Email" type="email" />
+          <input required id="reg-display" placeholder="Display name" />
+          <input required id="reg-password" placeholder="Password" type="password" />
+          <button type="submit">Register</button>
+        </form>
+        <form id="loginForm" aria-label="Login">
+          <input required id="login-username" placeholder="Username" />
+          <input required id="login-password" placeholder="Password" type="password" />
+          <button type="submit">Login</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="chat" hidden>
+      <header>
+        <div>
+          <input id="room-name" placeholder="New room name" />
+          <button id="create-room">Create room</button>
+        </div>
+        <div id="me"></div>
+      </header>
+      <aside>
+        <ul id="rooms" aria-live="polite"></ul>
+      </aside>
+      <section class="messages">
+        <ul id="message-list" aria-live="polite"></ul>
+        <form id="sendForm">
+          <input id="message-input" placeholder="Type a message" autocomplete="off" />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </section>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
+
+
