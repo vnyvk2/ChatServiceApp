@@ -1,4 +1,3 @@
-// Fixed WebSocketJwtInterceptor.java
 package com.example.chatservice.websocket;
 
 import com.example.chatservice.security.JwtService;
@@ -33,14 +32,19 @@ public class WebSocketJwtInterceptor implements ChannelInterceptor {
             String authToken = accessor.getFirstNativeHeader("Authorization");
             if (authToken != null && authToken.startsWith("Bearer ")) {
                 String token = authToken.substring(7);
-                String username = jwtService.extractUsername(token);
+                try {
+                    String username = jwtService.extractUsername(token);
 
-                if (username != null && jwtService.isTokenValid(token, username)) {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    accessor.setUser(authentication);
+                    if (username != null && jwtService.isTokenValid(token, username)) {
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        accessor.setUser(authentication);
+                    }
+                } catch (Exception e) {
+                    // Log the exception but don't break the connection
+                    System.err.println("JWT validation failed: " + e.getMessage());
                 }
             }
         }
