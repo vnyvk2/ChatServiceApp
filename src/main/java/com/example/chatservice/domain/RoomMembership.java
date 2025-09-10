@@ -1,27 +1,34 @@
-// Updated RoomMembership.java
 package com.example.chatservice.domain;
 
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.io.Serializable;
 import java.time.Instant;
 
 @Entity
-@Table(name = "room_memberships", indexes = {
-        @Index(name = "idx_room_memberships_room_user", columnList = "room_id, user_id", unique = true),
-        @Index(name = "idx_room_memberships_user", columnList = "user_id")
+@Table(name = "room_memberships", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_room_user", columnNames = {"room_id", "user_id"})
 })
+@Data
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class RoomMembership {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @EmbeddedId
+    @EqualsAndHashCode.Include
+    private RoomMembershipId id = new RoomMembershipId();
 
     @ManyToOne(optional = false)
+    @MapsId("roomId")
     @JoinColumn(name = "room_id", nullable = false)
     private ChatRoom room;
 
     @ManyToOne(optional = false)
+    @MapsId("userId")
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -43,24 +50,31 @@ public class RoomMembership {
         ADMIN, MODERATOR, MEMBER
     }
 
-    // Getters and setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    // Custom setter methods to maintain composite key consistency
+    public void setRoom(ChatRoom room) {
+        this.room = room;
+        if (room != null && this.id != null) {
+            this.id.setRoomId(room.getId());
+        }
+    }
 
-    public ChatRoom getRoom() { return room; }
-    public void setRoom(ChatRoom room) { this.room = room; }
+    public void setUser(User user) {
+        this.user = user;
+        if (user != null && this.id != null) {
+            this.id.setUserId(user.getId());
+        }
+    }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    @Embeddable
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class RoomMembershipId implements Serializable {
+        @Column(name = "room_id")
+        private Long roomId;
 
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
-
-    public boolean isActive() { return isActive; }
-    public void setActive(boolean active) { isActive = active; }
-
-    public Instant getJoinedAt() { return joinedAt; }
-
-    public Instant getLeftAt() { return leftAt; }
-    public void setLeftAt(Instant leftAt) { this.leftAt = leftAt; }
+        @Column(name = "user_id")
+        private Long userId;
+    }
 }

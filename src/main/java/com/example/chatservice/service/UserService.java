@@ -1,6 +1,5 @@
 package com.example.chatservice.service;
 
-
 import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -8,7 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -23,24 +24,82 @@ public class UserService {
 
     @Transactional
     public void updateUserStatus(Long userId, User.UserStatus status) {
-        User user = userRepository.findById(userId).orElseThrow();
-        User.UserStatus oldStatus = user.getStatus();
-        user.setStatus(status);
-        user.setLastSeenAt(Instant.now());
-        userRepository.save(user);
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            User.UserStatus oldStatus = user.getStatus();
+            user.setStatus(status);
+            user.setLastSeenAt(Instant.now());
+            userRepository.save(user);
 
-        // Broadcast status change
-        if (!oldStatus.equals(status)) {
-            Map<String, Object> statusEvent = Map.of(
-                    "type", "STATUS_CHANGED",
-                    "user", Map.of(
-                            "username", user.getUsername(),
-                            "displayName", user.getDisplayName(),
-                            "status", status.toString()
-                    ),
-                    "timestamp", System.currentTimeMillis()
-            );
-            messagingTemplate.convertAndSend("/topic/user-status/" + user.getUsername(), statusEvent);
+            // Broadcast status change
+            if (!oldStatus.equals(status)) {
+                Map<String, Object> statusEvent = Map.of(
+                        "type", "STATUS_CHANGED",
+                        "user", Map.of(
+                                "username", user.getUsername(),
+                                "displayName", user.getDisplayName(),
+                                "status", status.toString()
+                        ),
+                        "timestamp", System.currentTimeMillis()
+                );
+                messagingTemplate.convertAndSend("/topic/user-status/" + user.getUsername(), statusEvent);
+            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findByPhoneNumber(String phoneNumber) {
+        return userRepository.findByPhoneNumber(phoneNumber);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> getOnlineUsers() {
+        return userRepository.findOnlineUsers();
+    }
+
+    @Transactional
+    public User saveUser(User user) {
+        return userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsByPhoneNumber(String phoneNumber) {
+        return userRepository.existsByPhoneNumber(phoneNumber);
+    }
+
+    @Transactional
+    public void updateLastSeen(Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setLastSeenAt(Instant.now());
+            userRepository.save(user);
         }
     }
 }
