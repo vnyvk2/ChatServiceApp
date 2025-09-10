@@ -60,6 +60,7 @@ public class RoomMembership {
     public void setActive(boolean active) { isActive = active; }
 
     public Instant getJoinedAt() { return joinedAt; }
+
     public Instant getLeftAt() { return leftAt; }
     public void setLeftAt(Instant leftAt) { this.leftAt = leftAt; }
 }

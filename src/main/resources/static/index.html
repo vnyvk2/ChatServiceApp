@@ -1,403 +1,266 @@
-<!-- Create: src/main/resources/static/index.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Enhanced Chat Service</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-  <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .auth-section, .chat-section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-        .hidden { display: none; }
-        input, button, select { margin: 5px; padding: 8px; }
-        .room-list, .message-list { border: 1px solid #ccc; height: 200px; overflow-y: scroll; padding: 10px; margin: 10px 0; }
-        .online-users { background-color: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 5px; }
-        .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
-        .status-online { background-color: green; }
-        .status-offline { background-color: gray; }
-        .status-away { background-color: orange; }
-    </style>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
-<div class="container">
-  <h1>Enhanced Chat Service</h1>
-
+<div class="app-container">
   <!-- Authentication Section -->
-  <div id="auth-section" class="auth-section">
-    <div id="login-form">
-      <h2>Login</h2>
-      <input type="text" id="login-username" placeholder="Username" />
-      <input type="password" id="login-password" placeholder="Password" />
-      <button onclick="login()">Login</button>
-      <button onclick="showRegister()">Register</button>
-    </div>
+  <div id="auth-section" class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <i class="fas fa-comments"></i>
+        <h1>ChatService</h1>
+        <p>Connect with friends and colleagues</p>
+      </div>
 
-    <div id="register-form" class="hidden">
-      <h2>Register</h2>
-      <input type="text" id="reg-username" placeholder="Username" />
-      <input type="email" id="reg-email" placeholder="Email" />
-      <input type="text" id="reg-phone" placeholder="Phone Number" />
-      <input type="text" id="reg-displayname" placeholder="Display Name" />
-      <input type="password" id="reg-password" placeholder="Password" />
-      <button onclick="register()">Register</button>
-      <button onclick="showLogin()">Back to Login</button>
+      <!-- Login Form -->
+      <div id="login-form" class="auth-form">
+        <h2>Welcome Back</h2>
+        <form onsubmit="return false;">
+          <div class="input-group">
+            <i class="fas fa-user"></i>
+            <input type="text" id="login-username" placeholder="Username" required>
+          </div>
+          <div class="input-group">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="login-password" placeholder="Password" required>
+          </div>
+          <button type="button" class="btn-primary" onclick="login()">
+            <span class="btn-text">Sign In</span>
+            <span class="btn-loading hidden">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+          </button>
+        </form>
+        <div class="auth-switch">
+          <p>Don't have an account? <a href="#" onclick="showRegister()">Sign up</a></p>
+        </div>
+      </div>
+
+      <!-- Register Form -->
+      <div id="register-form" class="auth-form hidden">
+        <h2>Create Account</h2>
+        <form onsubmit="return false;">
+          <div class="input-group">
+            <i class="fas fa-user"></i>
+            <input type="text" id="reg-username" placeholder="Username" required>
+          </div>
+          <div class="input-group">
+            <i class="fas fa-envelope"></i>
+            <input type="email" id="reg-email" placeholder="Email" required>
+          </div>
+          <div class="input-group">
+            <i class="fas fa-phone"></i>
+            <input type="text" id="reg-phone" placeholder="Phone Number (optional)">
+          </div>
+          <div class="input-group">
+            <i class="fas fa-id-card"></i>
+            <input type="text" id="reg-displayname" placeholder="Display Name" required>
+          </div>
+          <div class="input-group">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="reg-password" placeholder="Password (min 6 chars)" required>
+          </div>
+          <button type="button" class="btn-primary" onclick="register()">
+            <span class="btn-text">Create Account</span>
+            <span class="btn-loading hidden">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+          </button>
+        </form>
+        <div class="auth-switch">
+          <p>Already have an account? <a href="#" onclick="showLogin()">Sign in</a></p>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Chat Section -->
-  <div id="chat-section" class="chat-section hidden">
-    <div id="user-info">
-      <h3>Welcome, <span id="current-user"></span>!</h3>
-      <select id="status-select" onchange="updateStatus()">
-        <option value="online">Online</option>
-        <option value="away">Away</option>
-        <option value="offline">Offline</option>
-      </select>
-      <button onclick="logout()">Logout</button>
+  <!-- Chat Application -->
+  <div id="chat-section" class="chat-container hidden">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="user-profile">
+          <div class="user-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="user-info">
+            <h3 id="current-user">Loading...</h3>
+            <div class="status-selector">
+              <select id="status-select" onchange="updateStatus()">
+                <option value="ONLINE">🟢 Online</option>
+                <option value="AWAY">🟡 Away</option>
+                <option value="OFFLINE">⚫ Offline</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-icon" onclick="logout()" title="Logout">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-content">
+        <!-- Room Actions -->
+        <div class="room-actions">
+          <button class="btn-action" onclick="showCreateRoom()">
+            <i class="fas fa-plus"></i>
+            Create Room
+          </button>
+          <button class="btn-action" onclick="showJoinRoom()">
+            <i class="fas fa-door-open"></i>
+            Join Room
+          </button>
+          <button class="btn-action" onclick="showDirectMessage()">
+            <i class="fas fa-comment"></i>
+            New DM
+          </button>
+        </div>
+
+        <!-- My Rooms -->
+        <div class="room-section">
+          <h4>My Rooms</h4>
+          <div id="room-list" class="room-list"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Room Management -->
-    <div id="room-management">
-      <h3>Rooms</h3>
-      <button onclick="showCreateRoom()">Create Room</button>
-      <button onclick="showJoinRoom()">Join Room</button>
-      <button onclick="showDirectMessage()">New Direct Message</button>
-
-      <div id="create-room-form" class="hidden">
-        <h4>Create New Room</h4>
-        <input type="text" id="room-name" placeholder="Room Name" />
-        <input type="text" id="room-description" placeholder="Description" />
-        <select id="room-type">
-          <option value="GROUP_CHAT">Group Chat</option>
-          <option value="BROADCAST">Broadcast</option>
-        </select>
-        <label><input type="checkbox" id="room-private" /> Private Room</label>
-        <button onclick="createRoom()">Create</button>
-        <button onclick="hideCreateRoom()">Cancel</button>
+    <!-- Main Chat Area -->
+    <div class="main-content">
+      <div class="chat-header">
+        <div class="room-info">
+          <h3 id="current-room-name">Select a room to start chatting</h3>
+          <div id="room-members-count" class="members-count"></div>
+        </div>
+        <div class="chat-actions">
+          <button class="btn-icon" onclick="toggleMembersList()" title="Toggle Members">
+            <i class="fas fa-users"></i>
+          </button>
+        </div>
       </div>
 
-      <div id="join-room-form" class="hidden">
-        <h4>Join Room</h4>
-        <div id="available-rooms" class="room-list"></div>
+      <div class="chat-body">
+        <div id="chat-messages" class="message-area">
+          <div class="welcome-message">
+            <i class="fas fa-comments"></i>
+            <h3>Welcome to ChatService</h3>
+            <p>Select a room from the sidebar to start chatting</p>
+          </div>
+        </div>
+
+        <div id="members-panel" class="members-panel hidden">
+          <h4>Room Members</h4>
+          <div id="online-users" class="members-list"></div>
+        </div>
       </div>
 
-      <div id="direct-message-form" class="hidden">
-        <h4>Start Direct Message</h4>
-        <input type="text" id="dm-phone" placeholder="Phone Number" />
-        <input type="text" id="dm-username" placeholder="Or Username" />
-        <button onclick="createDirectMessage()">Start Chat</button>
-        <button onclick="hideDirectMessage()">Cancel</button>
+      <div id="chat-input-area" class="chat-input hidden">
+        <div id="typing-indicator" class="typing-indicator"></div>
+        <div class="input-container">
+          <input type="text" id="message-input" placeholder="Type your message..."
+                 onkeypress="handleKeyPress(event)" oninput="handleTyping()">
+          <button class="btn-send" onclick="sendMessage()">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
       </div>
-    </div>
-
-    <!-- My Rooms -->
-    <div id="my-rooms">
-      <h3>My Rooms</h3>
-      <div id="room-list" class="room-list"></div>
-    </div>
-
-    <!-- Chat Area -->
-    <div id="chat-area" class="hidden">
-      <h3 id="current-room-name">Select a room</h3>
-      <div id="online-users" class="online-users"></div>
-      <div id="message-list" class="message-list"></div>
-      <div>
-        <input type="text" id="message-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)" />
-        <button onclick="sendMessage()">Send</button>
-      </div>
-      <div id="typing-indicator"></div>
     </div>
   </div>
+
+  <!-- Modals -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModals()">
+    <!-- Create Room Modal -->
+    <div id="create-room-modal" class="modal hidden" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Create New Room</h3>
+        <button class="btn-close" onclick="closeModals()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label>Room Name</label>
+          <input type="text" id="room-name" placeholder="Enter room name">
+        </div>
+        <div class="input-group">
+          <label>Description</label>
+          <textarea id="room-description" placeholder="Room description (optional)"></textarea>
+        </div>
+        <div class="input-group">
+          <label>Room Type</label>
+          <select id="room-type">
+            <option value="GROUP_CHAT">Group Chat</option>
+            <option value="BROADCAST">Broadcast Channel</option>
+          </select>
+        </div>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="room-private">
+            <span class="checkmark"></span>
+            Private Room
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModals()">Cancel</button>
+        <button class="btn-primary" onclick="createRoom()">Create Room</button>
+      </div>
+    </div>
+
+    <!-- Join Room Modal -->
+    <div id="join-room-modal" class="modal hidden" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Join Room</h3>
+        <button class="btn-close" onclick="closeModals()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="available-rooms" class="available-rooms">
+          <div class="loading">Loading available rooms...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direct Message Modal -->
+    <div id="direct-message-modal" class="modal hidden" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>New Direct Message</h3>
+        <button class="btn-close" onclick="closeModals()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label>Phone Number</label>
+          <input type="text" id="dm-phone" placeholder="Enter phone number">
+        </div>
+        <div class="divider">OR</div>
+        <div class="input-group">
+          <label>Username</label>
+          <input type="text" id="dm-username" placeholder="Enter username">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModals()">Cancel</button>
+        <button class="btn-primary" onclick="createDirectMessage()">Start Chat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
 </div>
 
-<script>
-        let stompClient = null;
-        let currentUser = null;
-        let currentRoom = null;
-        let token = null;
-
-        function showRegister() {
-            document.getElementById('login-form').classList.add('hidden');
-            document.getElementById('register-form').classList.remove('hidden');
-        }
-
-        function showLogin() {
-            document.getElementById('register-form').classList.add('hidden');
-            document.getElementById('login-form').classList.remove('hidden');
-        }
-
-        function login() {
-            const username = document.getElementById('login-username').value;
-            const password = document.getElementById('login-password').value;
-
-            fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.token) {
-                    token = data.token;
-                    currentUser = data.user;
-                    document.getElementById('current-user').textContent = currentUser.displayName;
-                    document.getElementById('auth-section').classList.add('hidden');
-                    document.getElementById('chat-section').classList.remove('hidden');
-                    connectWebSocket();
-                    loadMyRooms();
-                    loadAvailableRooms();
-                } else {
-                    alert('Login failed: ' + (data.error || 'Unknown error'));
-                }
-            })
-            .catch(error => console.error('Login error:', error));
-        }
-
-        function register() {
-            const username = document.getElementById('reg-username').value;
-            const email = document.getElementById('reg-email').value;
-            const phoneNumber = document.getElementById('reg-phone').value;
-            const displayName = document.getElementById('reg-displayname').value;
-            const password = document.getElementById('reg-password').value;
-
-            fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, email, phoneNumber, displayName, password })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.token) {
-                    token = data.token;
-                    currentUser = data.user;
-                    document.getElementById('current-user').textContent = currentUser.displayName;
-                    document.getElementById('auth-section').classList.add('hidden');
-                    document.getElementById('chat-section').classList.remove('hidden');
-                    connectWebSocket();
-                    loadMyRooms();
-                    loadAvailableRooms();
-                } else {
-                    alert('Registration failed: ' + (data.error || 'Unknown error'));
-                }
-            })
-            .catch(error => console.error('Registration error:', error));
-        }
-
-        function logout() {
-            if (stompClient) {
-                stompClient.disconnect();
-            }
-
-            fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            token = null;
-            currentUser = null;
-            currentRoom = null;
-            document.getElementById('chat-section').classList.add('hidden');
-            document.getElementById('auth-section').classList.remove('hidden');
-            showLogin();
-        }
-
-        function connectWebSocket() {
-            const socket = new SockJS('/ws');
-            stompClient = Stomp.over(socket);
-
-            stompClient.connect({ 'Authorization': 'Bearer ' + token }, function(frame) {
-                console.log('Connected: ' + frame);
-
-                // Subscribe to user-specific status updates
-                stompClient.subscribe('/user/topic/user-status/' + currentUser.username, function(message) {
-                    const statusUpdate = JSON.parse(message.body);
-                    console.log('Status update:', statusUpdate);
-                });
-
-                // Subscribe to error messages
-                stompClient.subscribe('/user/queue/errors', function(message) {
-                    const error = JSON.parse(message.body);
-                    console.error('WebSocket error:', error);
-                    alert('Error: ' + error.message);
-                });
-            });
-        }
-
-        function loadMyRooms() {
-            fetch('/api/rooms/my-rooms', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            })
-            .then(response => response.json())
-            .then(rooms => {
-                const roomList = document.getElementById('room-list');
-                roomList.innerHTML = '';
-                rooms.forEach(membership => {
-                    const room = membership.room;
-                    const div = document.createElement('div');
-                    div.innerHTML = `
-                        <strong>${room.name}</strong> (${room.roomType})
-                        <button onclick="selectRoom(${room.id}, '${room.name}')">Enter</button>
-                        <button onclick="leaveRoom(${room.id})">Leave</button>
-                    `;
-                    roomList.appendChild(div);
-                });
-            });
-        }
-
-        function loadAvailableRooms() {
-            fetch('/api/rooms/available', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            })
-            .then(response => response.json())
-            .then(rooms => {
-                const availableRooms = document.getElementById('available-rooms');
-                availableRooms.innerHTML = '';
-                rooms.forEach(room => {
-                    const div = document.createElement('div');
-                    div.innerHTML = `
-                        <strong>${room.name}</strong> - ${room.description || 'No description'}
-                        <button onclick="joinRoom(${room.id})">Join</button>
-                    `;
-                    availableRooms.appendChild(div);
-                });
-            });
-        }
-
-        function selectRoom(roomId, roomName) {
-            currentRoom = roomId;
-            document.getElementById('current-room-name').textContent = roomName;
-            document.getElementById('chat-area').classList.remove('hidden');
-
-            // Subscribe to room messages
-            if (stompClient && stompClient.connected) {
-                stompClient.subscribe('/topic/rooms/' + roomId, function(message) {
-                    const messageData = JSON.parse(message.body);
-                    displayMessage(messageData);
-                });
-
-                stompClient.subscribe('/topic/rooms/' + roomId + '/events', function(message) {
-                    const event = JSON.parse(message.body);
-                    displayEvent(event);
-                });
-
-                stompClient.subscribe('/topic/rooms/' + roomId + '/typing', function(message) {
-                    const typing = JSON.parse(message.body);
-                    displayTyping(typing);
-                });
-
-                // Send join notification
-                stompClient.send('/app/rooms/' + roomId + '/join-notification', {}, JSON.stringify({}));
-            }
-
-            loadRoomMembers(roomId);
-            loadMessages(roomId);
-        }
-
-        function loadRoomMembers(roomId) {
-            fetch(`/api/rooms/${roomId}/members`, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            })
-            .then(response => response.json())
-            .then(members => {
-                const onlineUsers = document.getElementById('online-users');
-                onlineUsers.innerHTML = '<strong>Room Members:</strong><br>';
-                members.forEach(member => {
-                    const statusClass = 'status-' + member.status.toLowerCase();
-                    onlineUsers.innerHTML += `
-                        <span class="status-indicator ${statusClass}"></span>
-                        ${member.displayName} (${member.role})
-                    `;
-                });
-            });
-        }
-
-        function sendMessage() {
-            const messageInput = document.getElementById('message-input');
-            const text = messageInput.value.trim();
-
-            if (text && currentRoom && stompClient && stompClient.connected) {
-                stompClient.send('/app/rooms/' + currentRoom + '/send', {},
-                    JSON.stringify({ text: text }));
-                messageInput.value = '';
-            }
-        }
-
-        function displayMessage(messageData) {
-            const messageList = document.getElementById('message-list');
-            const div = document.createElement('div');
-            const timestamp = new Date(messageData.timestamp).toLocaleTimeString();
-            div.innerHTML = `
-                <strong>${messageData.sender.displayName}</strong>
-                <span style="color: gray; font-size: 0.8em;">${timestamp}</span><br>
-                ${messageData.text}
-            `;
-            messageList.appendChild(div);
-            messageList.scrollTop = messageList.scrollHeight;
-        }
-
-        function displayEvent(event) {
-            const messageList = document.getElementById('message-list');
-            const div = document.createElement('div');
-            div.style.fontStyle = 'italic';
-            div.style.color = 'gray';
-            const timestamp = new Date(event.timestamp).toLocaleTimeString();
-            div.innerHTML = `${event.message} <span style="font-size: 0.8em;">${timestamp}</span>`;
-            messageList.appendChild(div);
-            messageList.scrollTop = messageList.scrollHeight;
-
-            if (event.type === 'USER_JOINED' || event.type === 'USER_LEFT') {
-                loadRoomMembers(currentRoom);
-            }
-        }
-
-        function updateStatus() {
-            const newStatus = document.getElementById('status-select').value;
-            if (stompClient && stompClient.connected) {
-                stompClient.send('/app/user/status', {},
-                    JSON.stringify({ status: newStatus }));
-            }
-        }
-
-        // Additional functions for room management...
-        function showCreateRoom() {
-            document.getElementById('create-room-form').classList.remove('hidden');
-        }
-
-        function hideCreateRoom() {
-            document.getElementById('create-room-form').classList.add('hidden');
-        }
-
-        function createRoom() {
-            const name = document.getElementById('room-name').value;
-            const description = document.getElementById('room-description').value;
-            const roomType = document.getElementById('room-type').value;
-            const isPrivate = document.getElementById('room-private').checked;
-
-            fetch('/api/rooms', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ name, description, roomType, isPrivate })
-            })
-            .then(response => response.json())
-            .then(room => {
-                hideCreateRoom();
-                loadMyRooms();
-                loadAvailableRooms();
-            });
-        }
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-    </script>
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="assets/js/app.js"></script>
 </body>
 </html>
