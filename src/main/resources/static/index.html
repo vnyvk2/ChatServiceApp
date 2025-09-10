@@ -1,59 +1,403 @@
+<!-- Create: src/main/resources/static/index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chat App</title>
-  <link rel="stylesheet" href="/assets/styles.css" />
-  <script defer src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
-  <script defer src="/assets/app.js"></script>
-  <link rel="icon" href="data:," />
-  <meta name="color-scheme" content="light dark" />
-  <style>html{font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;}</style>
-  </head>
+  <title>Enhanced Chat Service</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .auth-section, .chat-section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .hidden { display: none; }
+        input, button, select { margin: 5px; padding: 8px; }
+        .room-list, .message-list { border: 1px solid #ccc; height: 200px; overflow-y: scroll; padding: 10px; margin: 10px 0; }
+        .online-users { background-color: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .status-online { background-color: green; }
+        .status-offline { background-color: gray; }
+        .status-away { background-color: orange; }
+    </style>
+</head>
 <body>
-  <main class="container" role="main">
-    <section class="auth">
-      <h1>Chat</h1>
-      <div class="auth-forms">
-        <form id="registerForm" aria-label="Register">
-          <input required id="reg-username" placeholder="Username" />
-          <input required id="reg-email" placeholder="Email" type="email" />
-          <input required id="reg-display" placeholder="Display name" />
-          <input required id="reg-password" placeholder="Password" type="password" />
-          <button type="submit">Register</button>
-        </form>
-        <form id="loginForm" aria-label="Login">
-          <input required id="login-username" placeholder="Username" />
-          <input required id="login-password" placeholder="Password" type="password" />
-          <button type="submit">Login</button>
-        </form>
-      </div>
-    </section>
+<div class="container">
+  <h1>Enhanced Chat Service</h1>
 
-    <section class="chat" hidden>
-      <header>
-        <div>
-          <input id="room-name" placeholder="New room name" />
-          <button id="create-room">Create room</button>
-        </div>
-        <div id="me"></div>
-      </header>
-      <aside>
-        <ul id="rooms" aria-live="polite"></ul>
-      </aside>
-      <section class="messages">
-        <ul id="message-list" aria-live="polite"></ul>
-        <form id="sendForm">
-          <input id="message-input" placeholder="Type a message" autocomplete="off" />
-          <button type="submit">Send</button>
-        </form>
-      </section>
-    </section>
-  </main>
-  <div id="toast" role="status" aria-live="polite"></div>
+  <!-- Authentication Section -->
+  <div id="auth-section" class="auth-section">
+    <div id="login-form">
+      <h2>Login</h2>
+      <input type="text" id="login-username" placeholder="Username" />
+      <input type="password" id="login-password" placeholder="Password" />
+      <button onclick="login()">Login</button>
+      <button onclick="showRegister()">Register</button>
+    </div>
+
+    <div id="register-form" class="hidden">
+      <h2>Register</h2>
+      <input type="text" id="reg-username" placeholder="Username" />
+      <input type="email" id="reg-email" placeholder="Email" />
+      <input type="text" id="reg-phone" placeholder="Phone Number" />
+      <input type="text" id="reg-displayname" placeholder="Display Name" />
+      <input type="password" id="reg-password" placeholder="Password" />
+      <button onclick="register()">Register</button>
+      <button onclick="showLogin()">Back to Login</button>
+    </div>
+  </div>
+
+  <!-- Chat Section -->
+  <div id="chat-section" class="chat-section hidden">
+    <div id="user-info">
+      <h3>Welcome, <span id="current-user"></span>!</h3>
+      <select id="status-select" onchange="updateStatus()">
+        <option value="online">Online</option>
+        <option value="away">Away</option>
+        <option value="offline">Offline</option>
+      </select>
+      <button onclick="logout()">Logout</button>
+    </div>
+
+    <!-- Room Management -->
+    <div id="room-management">
+      <h3>Rooms</h3>
+      <button onclick="showCreateRoom()">Create Room</button>
+      <button onclick="showJoinRoom()">Join Room</button>
+      <button onclick="showDirectMessage()">New Direct Message</button>
+
+      <div id="create-room-form" class="hidden">
+        <h4>Create New Room</h4>
+        <input type="text" id="room-name" placeholder="Room Name" />
+        <input type="text" id="room-description" placeholder="Description" />
+        <select id="room-type">
+          <option value="GROUP_CHAT">Group Chat</option>
+          <option value="BROADCAST">Broadcast</option>
+        </select>
+        <label><input type="checkbox" id="room-private" /> Private Room</label>
+        <button onclick="createRoom()">Create</button>
+        <button onclick="hideCreateRoom()">Cancel</button>
+      </div>
+
+      <div id="join-room-form" class="hidden">
+        <h4>Join Room</h4>
+        <div id="available-rooms" class="room-list"></div>
+      </div>
+
+      <div id="direct-message-form" class="hidden">
+        <h4>Start Direct Message</h4>
+        <input type="text" id="dm-phone" placeholder="Phone Number" />
+        <input type="text" id="dm-username" placeholder="Or Username" />
+        <button onclick="createDirectMessage()">Start Chat</button>
+        <button onclick="hideDirectMessage()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- My Rooms -->
+    <div id="my-rooms">
+      <h3>My Rooms</h3>
+      <div id="room-list" class="room-list"></div>
+    </div>
+
+    <!-- Chat Area -->
+    <div id="chat-area" class="hidden">
+      <h3 id="current-room-name">Select a room</h3>
+      <div id="online-users" class="online-users"></div>
+      <div id="message-list" class="message-list"></div>
+      <div>
+        <input type="text" id="message-input" placeholder="Type your message..." onkeypress="handleKeyPress(event)" />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+      <div id="typing-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+        let stompClient = null;
+        let currentUser = null;
+        let currentRoom = null;
+        let token = null;
+
+        function showRegister() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('register-form').classList.remove('hidden');
+        }
+
+        function showLogin() {
+            document.getElementById('register-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+        }
+
+        function login() {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    token = data.token;
+                    currentUser = data.user;
+                    document.getElementById('current-user').textContent = currentUser.displayName;
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('chat-section').classList.remove('hidden');
+                    connectWebSocket();
+                    loadMyRooms();
+                    loadAvailableRooms();
+                } else {
+                    alert('Login failed: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => console.error('Login error:', error));
+        }
+
+        function register() {
+            const username = document.getElementById('reg-username').value;
+            const email = document.getElementById('reg-email').value;
+            const phoneNumber = document.getElementById('reg-phone').value;
+            const displayName = document.getElementById('reg-displayname').value;
+            const password = document.getElementById('reg-password').value;
+
+            fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, phoneNumber, displayName, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    token = data.token;
+                    currentUser = data.user;
+                    document.getElementById('current-user').textContent = currentUser.displayName;
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('chat-section').classList.remove('hidden');
+                    connectWebSocket();
+                    loadMyRooms();
+                    loadAvailableRooms();
+                } else {
+                    alert('Registration failed: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => console.error('Registration error:', error));
+        }
+
+        function logout() {
+            if (stompClient) {
+                stompClient.disconnect();
+            }
+
+            fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            token = null;
+            currentUser = null;
+            currentRoom = null;
+            document.getElementById('chat-section').classList.add('hidden');
+            document.getElementById('auth-section').classList.remove('hidden');
+            showLogin();
+        }
+
+        function connectWebSocket() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({ 'Authorization': 'Bearer ' + token }, function(frame) {
+                console.log('Connected: ' + frame);
+
+                // Subscribe to user-specific status updates
+                stompClient.subscribe('/user/topic/user-status/' + currentUser.username, function(message) {
+                    const statusUpdate = JSON.parse(message.body);
+                    console.log('Status update:', statusUpdate);
+                });
+
+                // Subscribe to error messages
+                stompClient.subscribe('/user/queue/errors', function(message) {
+                    const error = JSON.parse(message.body);
+                    console.error('WebSocket error:', error);
+                    alert('Error: ' + error.message);
+                });
+            });
+        }
+
+        function loadMyRooms() {
+            fetch('/api/rooms/my-rooms', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(response => response.json())
+            .then(rooms => {
+                const roomList = document.getElementById('room-list');
+                roomList.innerHTML = '';
+                rooms.forEach(membership => {
+                    const room = membership.room;
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <strong>${room.name}</strong> (${room.roomType})
+                        <button onclick="selectRoom(${room.id}, '${room.name}')">Enter</button>
+                        <button onclick="leaveRoom(${room.id})">Leave</button>
+                    `;
+                    roomList.appendChild(div);
+                });
+            });
+        }
+
+        function loadAvailableRooms() {
+            fetch('/api/rooms/available', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(response => response.json())
+            .then(rooms => {
+                const availableRooms = document.getElementById('available-rooms');
+                availableRooms.innerHTML = '';
+                rooms.forEach(room => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <strong>${room.name}</strong> - ${room.description || 'No description'}
+                        <button onclick="joinRoom(${room.id})">Join</button>
+                    `;
+                    availableRooms.appendChild(div);
+                });
+            });
+        }
+
+        function selectRoom(roomId, roomName) {
+            currentRoom = roomId;
+            document.getElementById('current-room-name').textContent = roomName;
+            document.getElementById('chat-area').classList.remove('hidden');
+
+            // Subscribe to room messages
+            if (stompClient && stompClient.connected) {
+                stompClient.subscribe('/topic/rooms/' + roomId, function(message) {
+                    const messageData = JSON.parse(message.body);
+                    displayMessage(messageData);
+                });
+
+                stompClient.subscribe('/topic/rooms/' + roomId + '/events', function(message) {
+                    const event = JSON.parse(message.body);
+                    displayEvent(event);
+                });
+
+                stompClient.subscribe('/topic/rooms/' + roomId + '/typing', function(message) {
+                    const typing = JSON.parse(message.body);
+                    displayTyping(typing);
+                });
+
+                // Send join notification
+                stompClient.send('/app/rooms/' + roomId + '/join-notification', {}, JSON.stringify({}));
+            }
+
+            loadRoomMembers(roomId);
+            loadMessages(roomId);
+        }
+
+        function loadRoomMembers(roomId) {
+            fetch(`/api/rooms/${roomId}/members`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(response => response.json())
+            .then(members => {
+                const onlineUsers = document.getElementById('online-users');
+                onlineUsers.innerHTML = '<strong>Room Members:</strong><br>';
+                members.forEach(member => {
+                    const statusClass = 'status-' + member.status.toLowerCase();
+                    onlineUsers.innerHTML += `
+                        <span class="status-indicator ${statusClass}"></span>
+                        ${member.displayName} (${member.role})
+                    `;
+                });
+            });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const text = messageInput.value.trim();
+
+            if (text && currentRoom && stompClient && stompClient.connected) {
+                stompClient.send('/app/rooms/' + currentRoom + '/send', {},
+                    JSON.stringify({ text: text }));
+                messageInput.value = '';
+            }
+        }
+
+        function displayMessage(messageData) {
+            const messageList = document.getElementById('message-list');
+            const div = document.createElement('div');
+            const timestamp = new Date(messageData.timestamp).toLocaleTimeString();
+            div.innerHTML = `
+                <strong>${messageData.sender.displayName}</strong>
+                <span style="color: gray; font-size: 0.8em;">${timestamp}</span><br>
+                ${messageData.text}
+            `;
+            messageList.appendChild(div);
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        function displayEvent(event) {
+            const messageList = document.getElementById('message-list');
+            const div = document.createElement('div');
+            div.style.fontStyle = 'italic';
+            div.style.color = 'gray';
+            const timestamp = new Date(event.timestamp).toLocaleTimeString();
+            div.innerHTML = `${event.message} <span style="font-size: 0.8em;">${timestamp}</span>`;
+            messageList.appendChild(div);
+            messageList.scrollTop = messageList.scrollHeight;
+
+            if (event.type === 'USER_JOINED' || event.type === 'USER_LEFT') {
+                loadRoomMembers(currentRoom);
+            }
+        }
+
+        function updateStatus() {
+            const newStatus = document.getElementById('status-select').value;
+            if (stompClient && stompClient.connected) {
+                stompClient.send('/app/user/status', {},
+                    JSON.stringify({ status: newStatus }));
+            }
+        }
+
+        // Additional functions for room management...
+        function showCreateRoom() {
+            document.getElementById('create-room-form').classList.remove('hidden');
+        }
+
+        function hideCreateRoom() {
+            document.getElementById('create-room-form').classList.add('hidden');
+        }
+
+        function createRoom() {
+            const name = document.getElementById('room-name').value;
+            const description = document.getElementById('room-description').value;
+            const roomType = document.getElementById('room-type').value;
+            const isPrivate = document.getElementById('room-private').checked;
+
+            fetch('/api/rooms', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, description, roomType, isPrivate })
+            })
+            .then(response => response.json())
+            .then(room => {
+                hideCreateRoom();
+                loadMyRooms();
+                loadAvailableRooms();
+            });
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
 </body>
 </html>
-
-

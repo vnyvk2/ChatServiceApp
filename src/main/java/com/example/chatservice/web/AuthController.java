@@ -1,11 +1,14 @@
+// Updated AuthController.java
 package com.example.chatservice.web;
 
 import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.security.JwtService;
+import com.example.chatservice.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,24 +18,29 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final UserService userService;
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           AuthenticationManager authenticationManager,
-                          JwtService jwtService) {
+                          JwtService jwtService,
+                          UserService userService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.userService = userService;
     }
 
     @PostMapping("/register")
@@ -43,15 +51,33 @@ public class AuthController {
         if (userRepository.existsByEmail(request.email())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email already in use"));
         }
+        if (request.phoneNumber() != null && userRepository.existsByPhoneNumber(request.phoneNumber())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Phone number already in use"));
+        }
+
         User user = new User();
         user.setUsername(request.username());
         user.setEmail(request.email());
+        user.setPhoneNumber(request.phoneNumber());
         user.setDisplayName(request.displayName());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setStatus(User.UserStatus.OFFLINE);
         userRepository.save(user);
 
         String token = jwtService.generateToken(user.getUsername(), new HashMap<>());
-        return ResponseEntity.ok(Map.of("token", token));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("user", Map.of(
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "displayName", user.getDisplayName(),
+                "email", user.getEmail(),
+                "phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : "",
+                "status", user.getStatus().toString()
+        ));
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
@@ -59,16 +85,57 @@ public class AuthController {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password())
         );
+
+        User user = userRepository.findByUsername(request.username()).orElseThrow();
+        userService.updateUserStatus(user.getId(), User.UserStatus.ONLINE);
+
         String token = jwtService.generateToken(request.username(), new HashMap<>());
-        Map<String, Object> body = new HashMap<>();
-        body.put("token", token);
-        body.put("username", request.username());
-        return ResponseEntity.ok(body);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("user", Map.of(
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "displayName", user.getDisplayName(),
+                "email", user.getEmail(),
+                "phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : "",
+                "status", User.UserStatus.ONLINE.toString()
+        ));
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.substring(7); // Remove "Bearer " prefix
+        String username = jwtService.extractUsername(token);
+
+        User user = userRepository.findByUsername(username).orElseThrow();
+        userService.updateUserStatus(user.getId(), User.UserStatus.OFFLINE);
+
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+    }
+
+    @GetMapping("/search-by-phone")
+    public ResponseEntity<?> searchByPhone(@RequestParam String phoneNumber) {
+        Optional<User> user = userRepository.findByPhoneNumber(phoneNumber);
+        if (user.isPresent()) {
+            User foundUser = user.get();
+            return ResponseEntity.ok(Map.of(
+                    "id", foundUser.getId(),
+                    "username", foundUser.getUsername(),
+                    "displayName", foundUser.getDisplayName(),
+                    "phoneNumber", foundUser.getPhoneNumber(),
+                    "status", foundUser.getStatus().toString()
+            ));
+        }
+        return ResponseEntity.notFound().build();
     }
 
     public record RegisterRequest(
             @NotBlank @Size(min = 3, max = 50) String username,
             @NotBlank @Email String email,
+            @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format") String phoneNumber,
             @NotBlank @Size(min = 6, max = 100) String password,
             @NotBlank @Size(min = 1, max = 100) String displayName
     ) {}
@@ -78,5 +145,3 @@ public class AuthController {
             @NotBlank String password
     ) {}
 }
-
-
