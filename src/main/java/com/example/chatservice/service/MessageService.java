@@ -6,6 +6,7 @@ import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.ChatRoomRepository;
 import com.example.chatservice.repository.MessageRepository;
 import com.example.chatservice.repository.UserRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -80,5 +81,24 @@ public class MessageService {
     @Transactional(readOnly = true)
     public long getMessageCountInRoom(Long roomId) {
         return messageRepository.countByRoom_Id(roomId);
+    }
+
+    // --------- NEW methods required by controller ---------
+
+    /**
+     * Returns a page of messages for a room. Sorted by createdAt descending by default.
+     */
+    @Transactional(readOnly = true)
+    public Page<Message> getMessages(Long roomId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return messageRepository.findByRoom_Id(roomId, pageable);
+    }
+
+    /**
+     * Decrypt raw cipher text (used by controller /decrypt endpoint).
+     */
+    @Transactional(readOnly = true)
+    public String decrypt(String cipher) {
+        return cryptoService.decrypt(cipher);
     }
 }
