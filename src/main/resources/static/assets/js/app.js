@@ -870,74 +870,25 @@ class ChatApp {
         }
     }
 
-    // Global functions for HTML onclick events
-    let chatApp;
-
-    function login() {
-        chatApp.login();
-    }
-
-    function register() {
-        chatApp.register();
-    }
-
-    function logout() {
-        chatApp.logout();
-    }
-
-    function showLogin() {
-        chatApp.showLogin();
-    }
-
-    function showRegister() {
-        chatApp.showRegister();
-    }
-
-    function updateStatus() {
-        chatApp.updateStatus();
-    }
-
-    function sendMessage() {
-        chatApp.sendMessage();
-    }
-
-    function handleKeyPress(event) {
-        chatApp.handleKeyPress(event);
-    }
-
-    function handleTyping() {
-        chatApp.handleTyping();
-    }
-
-    function showCreateRoom() {
-        chatApp.showCreateRoom();
-    }
-
-    function showJoinRoom() {
-        chatApp.showJoinRoom();
-    }
-
-    function showDirectMessage() {
-        chatApp.showDirectMessage();
-    }
-
-    function createRoom() {
-        chatApp.createRoom();
-    }
-
-    function createDirectMessage() {
-        chatApp.createDirectMessage();
-    }
-
-    function closeModals() {
-        chatApp.closeModals();
-    }
-
-    function toggleMembersList() {
-        chatApp.toggleMembersList();
-    }
 
     // Initialize app when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {
         chatApp = new ChatApp();
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      window.chatApp = new ChatApp();
+
+      window.login = () => chatApp.login();
+      window.register = () => chatApp.register();
+      window.showLogin = () => chatApp.showLogin();
+      window.showRegister = () => chatApp.showRegister();
+      window.showCreateRoom = () => chatApp.showCreateRoom();
+      window.showJoinRoom = () => chatApp.showJoinRoom();
+      window.showDirectMessage = () => chatApp.showDirectMessage();
+      window.createRoom = () => chatApp.createRoom();
+      window.startDirectMessage = () => chatApp.startDirectMessage();
+      window.hideModals = () => chatApp.hideModals();
+
+      console.log("app.js loaded and functions bound ✅");
     });

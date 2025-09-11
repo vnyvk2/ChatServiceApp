@@ -2,265 +2,99 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enhanced Chat Service</title>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="assets/css/style.css" rel="stylesheet">
+  <title>ChatService</title>
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-<div class="app-container">
-  <!-- Authentication Section -->
-  <div id="auth-section" class="auth-container">
-    <div class="auth-card">
-      <div class="auth-header">
-        <i class="fas fa-comments"></i>
-        <h1>ChatService</h1>
-        <p>Connect with friends and colleagues</p>
-      </div>
 
-      <!-- Login Form -->
-      <div id="login-form" class="auth-form">
-        <h2>Welcome Back</h2>
-        <form onsubmit="return false;">
-          <div class="input-group">
-            <i class="fas fa-user"></i>
-            <input type="text" id="login-username" placeholder="Username" required>
-          </div>
-          <div class="input-group">
-            <i class="fas fa-lock"></i>
-            <input type="password" id="login-password" placeholder="Password" required>
-          </div>
-          <button type="button" class="btn-primary" onclick="login()">
-            <span class="btn-text">Sign In</span>
-            <span class="btn-loading hidden">
-                                <i class="fas fa-spinner fa-spin"></i>
-                            </span>
-          </button>
-        </form>
-        <div class="auth-switch">
-          <p>Don't have an account? <a href="#" onclick="showRegister()">Sign up</a></p>
-        </div>
-      </div>
+<h1>ChatService</h1>
+<p>Connect with friends and colleagues</p>
 
-      <!-- Register Form -->
-      <div id="register-form" class="auth-form hidden">
-        <h2>Create Account</h2>
-        <form onsubmit="return false;">
-          <div class="input-group">
-            <i class="fas fa-user"></i>
-            <input type="text" id="reg-username" placeholder="Username" required>
-          </div>
-          <div class="input-group">
-            <i class="fas fa-envelope"></i>
-            <input type="email" id="reg-email" placeholder="Email" required>
-          </div>
-          <div class="input-group">
-            <i class="fas fa-phone"></i>
-            <input type="text" id="reg-phone" placeholder="Phone Number (optional)">
-          </div>
-          <div class="input-group">
-            <i class="fas fa-id-card"></i>
-            <input type="text" id="reg-displayname" placeholder="Display Name" required>
-          </div>
-          <div class="input-group">
-            <i class="fas fa-lock"></i>
-            <input type="password" id="reg-password" placeholder="Password (min 6 chars)" required>
-          </div>
-          <button type="button" class="btn-primary" onclick="register()">
-            <span class="btn-text">Create Account</span>
-            <span class="btn-loading hidden">
-                                <i class="fas fa-spinner fa-spin"></i>
-                            </span>
-          </button>
-        </form>
-        <div class="auth-switch">
-          <p>Already have an account? <a href="#" onclick="showLogin()">Sign in</a></p>
-        </div>
-      </div>
-    </div>
+<!-- ================= AUTH SECTION ================= -->
+<div id="auth-section">
+  <!-- Login Form -->
+  <div id="login-form">
+    <h2>Welcome Back</h2>
+    <input id="login-username" type="text" placeholder="Username">
+    <input id="login-password" type="password" placeholder="Password">
+    <button onclick="login()">Sign In</button>
+    <p>Don't have an account?
+      <button onclick="showRegister()">Sign up</button>
+    </p>
   </div>
 
-  <!-- Chat Application -->
-  <div id="chat-section" class="chat-container hidden">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <div class="user-profile">
-          <div class="user-avatar">
-            <i class="fas fa-user"></i>
-          </div>
-          <div class="user-info">
-            <h3 id="current-user">Loading...</h3>
-            <div class="status-selector">
-              <select id="status-select" onchange="updateStatus()">
-                <option value="ONLINE">🟢 Online</option>
-                <option value="AWAY">🟡 Away</option>
-                <option value="OFFLINE">⚫ Offline</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn-icon" onclick="logout()" title="Logout">
-            <i class="fas fa-sign-out-alt"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="sidebar-content">
-        <!-- Room Actions -->
-        <div class="room-actions">
-          <button class="btn-action" onclick="showCreateRoom()">
-            <i class="fas fa-plus"></i>
-            Create Room
-          </button>
-          <button class="btn-action" onclick="showJoinRoom()">
-            <i class="fas fa-door-open"></i>
-            Join Room
-          </button>
-          <button class="btn-action" onclick="showDirectMessage()">
-            <i class="fas fa-comment"></i>
-            New DM
-          </button>
-        </div>
-
-        <!-- My Rooms -->
-        <div class="room-section">
-          <h4>My Rooms</h4>
-          <div id="room-list" class="room-list"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Chat Area -->
-    <div class="main-content">
-      <div class="chat-header">
-        <div class="room-info">
-          <h3 id="current-room-name">Select a room to start chatting</h3>
-          <div id="room-members-count" class="members-count"></div>
-        </div>
-        <div class="chat-actions">
-          <button class="btn-icon" onclick="toggleMembersList()" title="Toggle Members">
-            <i class="fas fa-users"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="chat-body">
-        <div id="chat-messages" class="message-area">
-          <div class="welcome-message">
-            <i class="fas fa-comments"></i>
-            <h3>Welcome to ChatService</h3>
-            <p>Select a room from the sidebar to start chatting</p>
-          </div>
-        </div>
-
-        <div id="members-panel" class="members-panel hidden">
-          <h4>Room Members</h4>
-          <div id="online-users" class="members-list"></div>
-        </div>
-      </div>
-
-      <div id="chat-input-area" class="chat-input hidden">
-        <div id="typing-indicator" class="typing-indicator"></div>
-        <div class="input-container">
-          <input type="text" id="message-input" placeholder="Type your message..."
-                 onkeypress="handleKeyPress(event)" oninput="handleTyping()">
-          <button class="btn-send" onclick="sendMessage()">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </div>
-      </div>
-    </div>
+  <!-- Register Form -->
+  <div id="register-form" style="display:none;">
+    <h2>Create Account</h2>
+    <input id="register-username" type="text" placeholder="Username">
+    <input id="register-email" type="email" placeholder="Email">
+    <input id="register-phone" type="text" placeholder="Phone Number (optional)">
+    <input id="register-displayname" type="text" placeholder="Display Name">
+    <input id="register-password" type="password" placeholder="Password (min 6 chars)">
+    <button onclick="register()">Create Account</button>
+    <p>Already have an account?
+      <button onclick="showLogin()">Sign in</button>
+    </p>
   </div>
-
-  <!-- Modals -->
-  <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModals()">
-    <!-- Create Room Modal -->
-    <div id="create-room-modal" class="modal hidden" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Create New Room</h3>
-        <button class="btn-close" onclick="closeModals()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="input-group">
-          <label>Room Name</label>
-          <input type="text" id="room-name" placeholder="Enter room name">
-        </div>
-        <div class="input-group">
-          <label>Description</label>
-          <textarea id="room-description" placeholder="Room description (optional)"></textarea>
-        </div>
-        <div class="input-group">
-          <label>Room Type</label>
-          <select id="room-type">
-            <option value="GROUP_CHAT">Group Chat</option>
-            <option value="BROADCAST">Broadcast Channel</option>
-          </select>
-        </div>
-        <div class="checkbox-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="room-private">
-            <span class="checkmark"></span>
-            Private Room
-          </label>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeModals()">Cancel</button>
-        <button class="btn-primary" onclick="createRoom()">Create Room</button>
-      </div>
-    </div>
-
-    <!-- Join Room Modal -->
-    <div id="join-room-modal" class="modal hidden" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Join Room</h3>
-        <button class="btn-close" onclick="closeModals()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div id="available-rooms" class="available-rooms">
-          <div class="loading">Loading available rooms...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Direct Message Modal -->
-    <div id="direct-message-modal" class="modal hidden" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3>New Direct Message</h3>
-        <button class="btn-close" onclick="closeModals()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="input-group">
-          <label>Phone Number</label>
-          <input type="text" id="dm-phone" placeholder="Enter phone number">
-        </div>
-        <div class="divider">OR</div>
-        <div class="input-group">
-          <label>Username</label>
-          <input type="text" id="dm-username" placeholder="Enter username">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeModals()">Cancel</button>
-        <button class="btn-primary" onclick="createDirectMessage()">Start Chat</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast Notifications -->
-  <div id="toast-container" class="toast-container"></div>
 </div>
 
-<!-- Scripts -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-<script src="assets/js/app.js"></script>
+<!-- ================= CHAT SECTION ================= -->
+<div id="chat-section" style="display:none;">
+  <div id="current-user"></div>
+  <select id="status-select">
+    <option value="online">🟢 Online</option>
+    <option value="away">🟡 Away</option>
+    <option value="busy">🔴 Busy</option>
+  </select>
+
+  <button onclick="showCreateRoom()">Create Room</button>
+  <button onclick="showJoinRoom()">Join Room</button>
+  <button onclick="showDirectMessage()">New DM</button>
+
+  <h3>My Rooms</h3>
+  <ul id="room-list"></ul>
+
+  <div id="current-room-name"></div>
+  <div id="chat-messages"></div>
+  <input id="message-input" type="text" placeholder="Type your message...">
+  <div id="typing-indicator"></div>
+</div>
+
+<!-- ================= MODALS ================= -->
+<div id="modal-overlay" style="display:none;">
+  <div id="create-room-modal" style="display:none;">
+    <h3>Create New Room</h3>
+    <input id="room-name" placeholder="Enter room name">
+    <input id="room-description" placeholder="Room description (optional)">
+    <select id="room-type">
+      <option value="group">Group Chat</option>
+      <option value="private">Private Room</option>
+    </select>
+    <button onclick="createRoom()">Create Room</button>
+    <button onclick="hideModals()">Cancel</button>
+  </div>
+
+  <div id="join-room-modal" style="display:none;">
+    <h3>Join Room</h3>
+    <div id="available-rooms">Loading available rooms...</div>
+    <button onclick="hideModals()">Cancel</button>
+  </div>
+
+  <div id="direct-message-modal" style="display:none;">
+    <h3>New Direct Message</h3>
+    <input id="dm-phone" placeholder="Enter phone number">
+    <p>OR</p>
+    <input id="dm-username" placeholder="Enter username">
+    <button onclick="startDirectMessage()">Start Chat</button>
+    <button onclick="hideModals()">Cancel</button>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ================= JS FILE ================= -->
+<script src="/assets/js/app.js"></script>
+
 </body>
 </html>
