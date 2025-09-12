@@ -14,89 +14,83 @@
 <h1>ChatService</h1>
 <p>Connect with friends and colleagues</p>
 
-<!-- ================= AUTH SECTION ================= --><div id="auth-section">
+<!-- ================= AUTH SECTION ================= -->
+<div id="auth-section">
+  <div class="auth-container">
+    <div class="auth-header">
+      <i class="fas fa-comments"></i>
+      <h1>ChatService</h1>
+      <p>Connect with friends and colleagues</p>
+    </div>
 
-  <div id="login-form">
-    <h2>Welcome Back</h2>
-    <input id="login-username" type="text" placeholder="Username">
-    <input id="login-password" type="password" placeholder="Password">
-    <button id="login-btn">Sign In</button>
-    <p>Don't have an account?
-      <button id="show-register-btn">Sign up</button>
-    </p>
+    <div id="login-form">
+      <div class="auth-body">
+        <h2>Welcome Back</h2>
+        <input id="login-username" type="text" placeholder="Username">
+        <input id="login-password" type="password" placeholder="Password">
+        <button id="login-btn" class="btn-primary">Sign In</button>
+      </div>
+      <div class="auth-footer">
+        Don't have an account? <button id="show-register-btn" class="btn-link">Sign Up</button>
+      </div>
+    </div>
+
+    <div id="register-form" style="display:none;">
+      <div class="auth-body">
+        <h2>Create Account</h2>
+        <input id="register-username" type="text" placeholder="Username">
+        <input id="register-email" type="email" placeholder="Email">
+        <input id="register-phone" type="text" placeholder="Phone Number (optional)">
+        <input id="register-displayname" type="text" placeholder="Display Name">
+        <input id="register-password" type="password" placeholder="Password (min 6 chars)">
+        <button id="register-btn" class="btn-primary">Create Account</button>
+      </div>
+      <div class="auth-footer">
+        Already have an account? <button id="show-login-btn" class="btn-link">Sign In</button>
+      </div>
+    </div>
   </div>
-
-  <div id="register-form" style="display:none;">
-    <h2>Create Account</h2>
-    <input id="register-username" type="text" placeholder="Username">
-    <input id="register-email" type="email" placeholder="Email">
-    <input id="register-phone" type="text" placeholder="Phone Number (optional)">
-    <input id="register-displayname" type="text" placeholder="Display Name">
-    <input id="register-password" type="password" placeholder="Password (min 6 chars)">
-    <button id="register-btn">Create Account</button>
-    <p>Already have an account?
-      <button id="show-login-btn">Sign in</button>
-    </p>
-  </div>
-
 </div>
 
-<!-- ================= CHAT SECTION ================= -->
 <div id="chat-section" style="display:none;">
-
   <div class="sidebar">
-    <div class="user-profile">
-      <div id="current-user"></div>
+    <div class="sidebar-header">
+      <div id="current-user" class="user-name"></div>
       <select id="status-select">
         <option value="online">🟢 Online</option>
         <option value="away">🟡 Away</option>
         <option value="busy">🔴 Busy</option>
       </select>
     </div>
-
     <div class="sidebar-actions">
-      <button id="show-create-room-btn" title="Create New Room">
-        <i class="fas fa-plus-circle"></i> Create Room
-      </button>
-      <button id="show-join-room-btn" title="Join a Room">
-        <i class="fas fa-search"></i> Join Room
-      </button>
-      <button id="show-dm-btn" title="New Direct Message">
-        <i class="fas fa-user-plus"></i> New DM
-      </button>
+      <button id="show-create-room-btn"><i class="fas fa-plus"></i> Create Room</button>
+      <button id="show-join-room-btn"><i class="fas fa-search"></i> Join Room</button>
+      <button id="show-dm-btn"><i class="fas fa-user-plus"></i> New DM</button>
     </div>
-
     <div class="room-list-container">
-      <h3>My Rooms</h3>
-      <ul id="room-list">
-      </ul>
+      <h4>My Rooms</h4>
+      <div id="room-list"></div>
     </div>
   </div>
 
   <div class="main-content">
     <div class="chat-header">
-      <h2 id="current-room-name">Select a room to start chatting</h2>
+      <h2 id="current-room-name">Select a room</h2>
       <div id="room-members-count"></div>
     </div>
-
     <div id="chat-messages">
       <div class="welcome-message">
         <i class="fas fa-comments"></i>
-        <h3>Welcome!</h3>
-        <p>Select a room from the sidebar to view messages or start a new conversation.</p>
+        <h3>Welcome to ChatService!</h3>
+        <p>Select a room from the sidebar to start chatting.</p>
       </div>
     </div>
-
     <div id="typing-indicator"></div>
-
     <div id="chat-input-area" class="hidden">
-      <textarea id="message-input" placeholder="Type your message... (Shift+Enter for new line)"></textarea>
-      <button id="send-btn" title="Send Message">
-        <i class="fas fa-paper-plane"></i>
-      </button>
+      <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+      <button id="send-btn" title="Send Message"><i class="fas fa-paper-plane"></i></button>
     </div>
   </div>
-
 </div>
 <!-- ================= MODALS ================= -->
 <div id="modal-overlay" class="hidden">

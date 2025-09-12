@@ -32,14 +32,6 @@ class ChatApp {
             }
         });
 
-        // Message input enter handler (example: connect to DOM if present)
-        document.addEventListener('keydown', (e) => {
-            const active = document.activeElement;
-            if (active && active.id === 'message-input' && e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
     }
 
     checkExistingSession() {
@@ -224,14 +216,19 @@ class ChatApp {
     }
 
     setButtonLoading(buttonType, isLoading) {
-        const button = Array.from(document.querySelectorAll('button')).find(b => {
-            const attr = b.getAttribute('onclick') || '';
-            return attr.includes(buttonType + '()');
-        });
+        // ✅ Expect buttons to have ids like login-btn, register-btn
+        const button = document.getElementById(`${buttonType}-btn`);
         if (!button) return;
+
         button.disabled = isLoading;
-        if (isLoading) button.classList.add('loading'); else button.classList.remove('loading');
+        if (isLoading) {
+            button.dataset.originalText = button.textContent;
+            button.textContent = 'Loading...';
+        } else {
+            button.textContent = button.dataset.originalText || button.textContent;
+        }
     }
+
 
     // ... keep the rest of your ChatApp methods unchanged (connectWebSocket, subscribeToRoom, sendMessage, etc.)
     // minor shim to match bindings
@@ -456,17 +453,23 @@ class ChatApp {
 
             async loadMessages(roomId) {
                 try {
-                    const response = await fetch(`/api/messages/rooms/${roomId}`, {
-                        headers: { 'Authorization': 'Bearer ' + this.token }
+                    const response = await fetch(`/api/chat/messages/${roomId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${this.token}`
+                        }
                     });
-
                     if (response.ok) {
-                        const messages = await response.json();
-//                        this.displayMessages(messages);
-                          this.displayMessages(page.content.reverse());
+                        const data = await response.json();
+
+                        // ✅ FIX: check if paginated or not
+                        if (data.content) {
+                            this.displayMessages(data.content.reverse());
+                        } else {
+                            this.displayMessages(data);
+                        }
                     }
                 } catch (error) {
-                    console.error('Error loading messages:', error);
+                    this.showToast('Error loading messages', 'error');
                 }
             }
 
@@ -786,48 +789,24 @@ class ChatApp {
                 }
             }
 
-            async createDirectMessage() {
-                const phoneNumber = document.getElementById('dm-phone').value.trim();
-                const username = document.getElementById('dm-username').value.trim();
-
-                if (!phoneNumber && !username) {
-                    this.showToast('Please enter a phone number or username', 'error');
-                    return;
-                }
-
+            async createDirectMessage(username) {
                 try {
-                    const response = await fetch('/api/rooms/direct-message', {
+                    const response = await fetch(`/api/chat/direct/${username}`, {
                         method: 'POST',
                         headers: {
-                            'Authorization': 'Bearer ' + this.token,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ phoneNumber, username })
+                            'Authorization': `Bearer ${this.token}`
+                        }
                     });
-
                     if (response.ok) {
-                        const dmRoom = await response.json();
-                        this.closeModals();
-                        this.loadMyRooms();
-                        this.showToast('Direct message started!', 'success');
-
-                        // Clear form
-                        document.getElementById('dm-phone').value = '';
-                        document.getElementById('dm-username').value = '';
-
-                        // Auto-select the DM room
-                        setTimeout(() => {
-                            this.selectRoom(dmRoom.id, dmRoom.name, dmRoom.roomType);
-                        }, 500);
-                    } else {
-                        const error = await response.json();
-                        this.showToast(error.error || 'Failed to start direct message', 'error');
+                        const room = await response.json();
+                        this.addRoom(room);
+                        this.selectRoom(room.id);
                     }
                 } catch (error) {
-                    console.error('Error creating direct message:', error);
-                    this.showToast('Network error. Please try again.', 'error');
+                    this.showToast('Error creating direct message', 'error');
                 }
             }
+
 
             // Status Management
             async updateStatus() {
