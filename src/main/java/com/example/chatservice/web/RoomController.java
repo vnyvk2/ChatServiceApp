@@ -141,6 +141,54 @@ public class RoomController {
         )).toList());
     }
 
+    @PostMapping("/create-with-options")
+    public ResponseEntity<?> createRoomWithOptions(@AuthenticationPrincipal UserDetails principal,
+                                                   @Valid @RequestBody CreateRoomWithOptionsRequest request) {
+        User creator = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+
+        // Validate room name uniqueness for public rooms
+        if (!request.isPrivate()) {
+            if (chatRoomService.findRoomByName(request.name()).isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Room name already exists"));
+            }
+        }
+
+        ChatRoom room = chatRoomService.createRoom(
+                request.name(),
+                request.description(),
+                ChatRoom.RoomType.GROUP_CHAT,
+                request.isPrivate(),
+                creator
+        );
+
+        // If it's a private room and initial members are specified, add them
+        if (request.isPrivate() && request.initialMembers() != null) {
+            for (String memberIdentifier : request.initialMembers()) {
+                User member = userRepository.findByUsername(memberIdentifier)
+                        .orElse(userRepository.findByPhoneNumber(memberIdentifier).orElse(null));
+                if (member != null) {
+                    chatRoomService.addMember(room.getId(), member.getId());
+                }
+            }
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "id", room.getId(),
+                "name", room.getName(),
+                "description", room.getDescription(),
+                "roomType", room.getRoomType(),
+                "isPrivate", room.isPrivate(),
+                "memberCount", chatRoomService.getRoomMemberCount(room.getId())
+        ));
+    }
+
+    public record CreateRoomWithOptionsRequest(
+            @NotBlank @Size(min = 1, max = 100) String name,
+            @Size(max = 500) String description,
+            boolean isPrivate,
+            List<String> initialMembers // usernames or phone numbers
+    ) {}
+
     public record CreateRoomRequest(
             @NotBlank @Size(min = 1, max = 100) String name,
             @Size(max = 500) String description,
@@ -151,5 +199,10 @@ public class RoomController {
     public record DirectMessageRequest(
             String phoneNumber,
             String username
-    ) {}
+    ) {
+        public boolean isValid() {
+            return (phoneNumber != null && !phoneNumber.trim().isEmpty()) ||
+                    (username != null && !username.trim().isEmpty());
+        }
+    }
 }
