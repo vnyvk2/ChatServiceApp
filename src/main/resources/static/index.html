@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>ChatService</title>
   <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
@@ -43,24 +44,58 @@
 <!-- ================= CHAT SECTION ================= -->
 <div id="chat-section" style="display:none;">
 
-  <div id="current-user"></div>
-  <select id="status-select">
-    <option value="online">🟢 Online</option>
-    <option value="away">🟡 Away</option>
-    <option value="busy">🔴 Busy</option>
-  </select>
+  <div class="sidebar">
+    <div class="user-profile">
+      <div id="current-user"></div>
+      <select id="status-select">
+        <option value="online">🟢 Online</option>
+        <option value="away">🟡 Away</option>
+        <option value="busy">🔴 Busy</option>
+      </select>
+    </div>
 
-  <button id="show-create-room-btn">Create Room</button>
-  <button id="show-join-room-btn">Join Room</button>
-  <button id="show-dm-btn">New DM</button>
+    <div class="sidebar-actions">
+      <button id="show-create-room-btn" title="Create New Room">
+        <i class="fas fa-plus-circle"></i> Create Room
+      </button>
+      <button id="show-join-room-btn" title="Join a Room">
+        <i class="fas fa-search"></i> Join Room
+      </button>
+      <button id="show-dm-btn" title="New Direct Message">
+        <i class="fas fa-user-plus"></i> New DM
+      </button>
+    </div>
 
-  <h3>My Rooms</h3>
-  <ul id="room-list"></ul>
+    <div class="room-list-container">
+      <h3>My Rooms</h3>
+      <ul id="room-list">
+      </ul>
+    </div>
+  </div>
 
-  <div id="current-room-name"></div>
-  <div id="chat-messages"></div>
-  <input id="message-input" type="text" placeholder="Type your message...">
-  <div id="typing-indicator"></div>
+  <div class="main-content">
+    <div class="chat-header">
+      <h2 id="current-room-name">Select a room to start chatting</h2>
+      <div id="room-members-count"></div>
+    </div>
+
+    <div id="chat-messages">
+      <div class="welcome-message">
+        <i class="fas fa-comments"></i>
+        <h3>Welcome!</h3>
+        <p>Select a room from the sidebar to view messages or start a new conversation.</p>
+      </div>
+    </div>
+
+    <div id="typing-indicator"></div>
+
+    <div id="chat-input-area" class="hidden">
+      <textarea id="message-input" placeholder="Type your message... (Shift+Enter for new line)"></textarea>
+      <button id="send-btn" title="Send Message">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
 
 </div>
 <!-- ================= MODALS ================= -->

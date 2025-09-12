@@ -947,6 +947,8 @@ class ChatApp {
 // Initialize app once and bind global functions for onclick HTML usage
 // Replace the entire 'DOMContentLoaded' block at the end of app.js with this.
 
+// Replace your entire 'DOMContentLoaded' block at the end of app.js with this.
+
 document.addEventListener('DOMContentLoaded', () => {
     // Make the app instance globally available for debugging
     window.chatApp = new ChatApp();
@@ -979,6 +981,25 @@ document.addEventListener('DOMContentLoaded', () => {
             chatApp.closeModals();
         }
     });
+
+    // --- Message Sending Listeners ---
+    const messageInput = document.getElementById('message-input');
+
+    // 1. Listen for the new Send Button click
+    document.getElementById('send-btn').addEventListener('click', () => chatApp.sendMessage());
+
+    // 2. Listen for the Enter key in the textarea
+    messageInput.addEventListener('keydown', (e) => {
+        // Send on Enter but allow new line on Shift+Enter
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); // Prevents a new line from being added
+            chatApp.sendMessage();
+        }
+    });
+
+    // 3. Handle typing indicator
+    messageInput.addEventListener('keyup', () => chatApp.handleTyping());
+
 
     console.log("app.js loaded and ChatApp initialized with event listeners ✅");
 });
