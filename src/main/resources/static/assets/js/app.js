@@ -456,13 +456,14 @@ class ChatApp {
 
             async loadMessages(roomId) {
                 try {
-                    const response = await fetch(`/api/messages/room/${roomId}`, {
+                    const response = await fetch(`/api/messages/rooms/${roomId}`, {
                         headers: { 'Authorization': 'Bearer ' + this.token }
                     });
 
                     if (response.ok) {
                         const messages = await response.json();
-                        this.displayMessages(messages);
+//                        this.displayMessages(messages);
+                          this.displayMessages(page.content.reverse());
                     }
                 } catch (error) {
                     console.error('Error loading messages:', error);
@@ -499,12 +500,45 @@ class ChatApp {
                 });
             }
 
+            // Replace the old displayMessages function in app.js with this one.
+
             displayMessages(messages) {
                 const messageArea = document.getElementById('chat-messages');
                 messageArea.innerHTML = '';
 
-                messages.forEach(message => {
-                    this.displayMessage(message, false);
+                // Safety check to ensure we have a valid array to work with
+                if (!messages || !Array.isArray(messages)) {
+                    console.error("displayMessages received invalid data:", messages);
+                    return;
+                }
+
+                messages.forEach(messageData => {
+                    const messageElement = document.createElement('div');
+                    const isOwnMessage = messageData.sender.username === this.currentUser.username;
+                    messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
+
+                    // Ensure createdAt exists before creating a Date from it
+                    const timestamp = messageData.createdAt ?
+                        new Date(messageData.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) :
+                        '';
+
+                    const senderDisplayName = messageData.sender ? this.escapeHtml(messageData.sender.displayName) : 'Unknown User';
+                    const messageText = messageData.text ? this.escapeHtml(messageData.text) : '...';
+
+                    messageElement.innerHTML = `
+                        <div class="message-content">
+                            <div class="message-header">
+                                <span class="message-sender">${senderDisplayName}</span>
+                                <span class="message-time">${timestamp}</span>
+                            </div>
+                            <div class="message-text">${messageText}</div>
+                        </div>
+                    `;
+
+                    messageArea.appendChild(messageElement);
                 });
 
                 this.scrollToBottom();
@@ -911,19 +945,40 @@ class ChatApp {
 }
 
 // Initialize app once and bind global functions for onclick HTML usage
+// Replace the entire 'DOMContentLoaded' block at the end of app.js with this.
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Make the app instance globally available for debugging
     window.chatApp = new ChatApp();
 
-    window.login = () => chatApp.login();
-    window.register = () => chatApp.register();
-    window.showLogin = () => chatApp.showLogin();
-    window.showRegister = () => chatApp.showRegister();
-    window.showCreateRoom = () => chatApp.showCreateRoom();
-    window.showJoinRoom = () => chatApp.showJoinRoom();
-    window.showDirectMessage = () => chatApp.showDirectMessage();
-    window.createRoom = () => chatApp.createRoom && chatApp.createRoom();
-    window.startDirectMessage = () => chatApp.startDirectMessage();
-    window.hideModals = () => chatApp.closeModals();
+    // --- Auth Form Listeners ---
+    document.getElementById('login-btn').addEventListener('click', () => chatApp.login());
+    document.getElementById('register-btn').addEventListener('click', () => chatApp.register());
+    document.getElementById('show-register-btn').addEventListener('click', () => chatApp.showRegister());
+    document.getElementById('show-login-btn').addEventListener('click', () => chatApp.showLogin());
 
-    console.log("app.js loaded and ChatApp initialized ✅");
+    // --- Main Chat View Button Listeners ---
+    document.getElementById('show-create-room-btn').addEventListener('click', () => chatApp.showCreateRoom());
+    document.getElementById('show-join-room-btn').addEventListener('click', () => chatApp.showJoinRoom());
+    document.getElementById('show-dm-btn').addEventListener('click', () => chatApp.showDirectMessage());
+
+    // --- User Status Dropdown Listener ---
+    document.getElementById('status-select').addEventListener('change', () => chatApp.updateStatus());
+
+    // --- Modal Action Button Listeners ---
+    document.getElementById('create-room-btn').addEventListener('click', () => chatApp.createRoom());
+    document.getElementById('start-dm-btn').addEventListener('click', () => chatApp.startDirectMessage());
+
+    // --- Modal Cancel Button Listeners ---
+    document.querySelectorAll('.cancel-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => chatApp.closeModals());
+    });
+
+    document.getElementById('modal-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) {
+            chatApp.closeModals();
+        }
+    });
+
+    console.log("app.js loaded and ChatApp initialized with event listeners ✅");
 });

@@ -38,22 +38,41 @@ public class RoomController {
     @PostMapping
     public ResponseEntity<?> createRoom(@AuthenticationPrincipal UserDetails principal,
                                         @Valid @RequestBody CreateRoomRequest request) {
-        User creator = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User creator = userRepository.findByUsername(principal.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Handle null/invalid roomType gracefully
+        ChatRoom.RoomType roomType;
+        try {
+            roomType = request.roomType() != null
+                    ? ChatRoom.RoomType.valueOf(request.roomType().toUpperCase())
+                    : ChatRoom.RoomType.GROUP_CHAT; // default
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid room type"));
+        }
+
         ChatRoom room = chatRoomService.createRoom(
-                request.name(),
-                request.description(),
-                request.roomType(),
+                request.name().trim(),
+                request.description() != null ? request.description().trim() : "",
+                roomType,
                 request.isPrivate(),
                 creator
         );
-        return ResponseEntity.ok(Map.of(
+
+        return ResponseEntity.status(201).body(Map.of(
                 "id", room.getId(),
                 "name", room.getName(),
                 "description", room.getDescription(),
                 "roomType", room.getRoomType(),
-                "isPrivate", room.isPrivate()
+                "isPrivate", room.isPrivate(),
+                "memberCount", chatRoomService.getRoomMemberCount(room.getId())
         ));
     }
+
 
     @PostMapping("/{roomId}/join")
     public ResponseEntity<?> joinRoom(@PathVariable Long roomId,
@@ -113,9 +132,22 @@ public class RoomController {
     @PostMapping("/direct-message")
     public ResponseEntity<?> createDirectMessage(@AuthenticationPrincipal UserDetails principal,
                                                  @Valid @RequestBody DirectMessageRequest request) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        if (request == null || !request.isValid()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "phoneNumber or username is required"));
+        }
+
         User currentUser = userRepository.findByUsername(principal.getUsername()).orElseThrow();
-        User targetUser = userRepository.findByPhoneNumber(request.phoneNumber())
-                .orElse(userRepository.findByUsername(request.username()).orElse(null));
+        User targetUser = null;
+        if (request.phoneNumber() != null && !request.phoneNumber().trim().isEmpty()) {
+            targetUser = userRepository.findByPhoneNumber(request.phoneNumber()).orElse(null);
+        }
+        if (targetUser == null && request.username() != null && !request.username().trim().isEmpty()) {
+            targetUser = userRepository.findByUsername(request.username()).orElse(null);
+        }
 
         if (targetUser == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
@@ -129,9 +161,13 @@ public class RoomController {
         ));
     }
 
+
     @GetMapping("/{roomId}/members")
     public ResponseEntity<?> getRoomMembers(@PathVariable Long roomId) {
         List<RoomMembership> members = chatRoomService.getRoomMembers(roomId);
+        if (members == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Room not found"));
+        }
         return ResponseEntity.ok(members.stream().map(membership -> Map.of(
                 "username", membership.getUser().getUsername(),
                 "displayName", membership.getUser().getDisplayName(),
@@ -140,6 +176,8 @@ public class RoomController {
                 "joinedAt", membership.getJoinedAt()
         )).toList());
     }
+
+
 
     @PostMapping("/create-with-options")
     public ResponseEntity<?> createRoomWithOptions(@AuthenticationPrincipal UserDetails principal,
@@ -192,9 +230,10 @@ public class RoomController {
     public record CreateRoomRequest(
             @NotBlank @Size(min = 1, max = 100) String name,
             @Size(max = 500) String description,
-            ChatRoom.RoomType roomType,
+            String roomType, // accept string from JSON
             boolean isPrivate
     ) {}
+
 
     public record DirectMessageRequest(
             String phoneNumber,

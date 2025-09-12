@@ -19,10 +19,21 @@ public class MessageController {
     }
 
     @GetMapping("/rooms/{roomId}")
-    public Page<Message> getRoomMessages(@PathVariable Long roomId,
-                                         @RequestParam(defaultValue = "0") int page,
-                                         @RequestParam(defaultValue = "50") int size) {
-        return messageService.getMessages(roomId, page, size);
+    public Page<MessageDto> getRoomMessages(@PathVariable Long roomId, // Return Page<MessageDto>
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(defaultValue = "50") int size) {
+        Page<Message> messagePage = messageService.getMessages(roomId, page, size);
+
+        // Map the Page<Message> to Page<MessageDto>
+        return messagePage.map(message -> {
+            String decryptedText = messageService.decrypt(message.getEncryptedContent());
+            var senderDto = new MessageDto.SenderDto(
+                    message.getSender().getUsername(),
+                    message.getSender().getDisplayName(),
+                    message.getSender().getStatus()
+            );
+            return new MessageDto(message.getId(), senderDto, decryptedText, message.getCreatedAt());
+        });
     }
 
     @PostMapping("/decrypt")
