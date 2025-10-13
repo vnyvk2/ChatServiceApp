@@ -275,7 +275,7 @@ For support and questions:
 This chat application demonstrates proficiency in:
 - **Full-stack development** with Java Spring Boot and modern frontend
 - **Real-time communication** using WebSocket and STOMP
-- **Database design** and JPA/Hibernate ORM
+- **Database design** and MySql
 - **Security implementation** with JWT and Spring Security
 - **RESTful API design** following best practices
 - **Responsive UI/UX design** with modern CSS
