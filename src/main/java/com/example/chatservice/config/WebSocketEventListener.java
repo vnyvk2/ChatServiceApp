@@ -1,8 +1,8 @@
-package com.chatservice.config;
+package com.example.chatservice.config;
 
-import com.chatservice.model.MessageType;
-import com.chatservice.payload.ChatMessage;
-import com.chatservice.service.UserService;
+import com.example.chatservice.domain.MessageType;
+import com.example.chatservice.web.MessageDto;
+import com.example.chatservice.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +40,7 @@ public class WebSocketEventListener {
             // Set user offline
             userService.setUserOnlineStatus(username, false);
 
-            ChatMessage chatMessage = new ChatMessage();
+            MessageDto chatMessage = new MessageDto();
             chatMessage.setType(MessageType.LEAVE);
             chatMessage.setSender(username);
 

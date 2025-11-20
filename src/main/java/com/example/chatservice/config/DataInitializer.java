@@ -1,8 +1,8 @@
-package com.chatservice.config;
+package com.example.chatservice.config;
 
-import com.chatservice.model.ERole;
-import com.chatservice.model.Role;
-import com.chatservice.repository.RoleRepository;
+import com.example.chatservice.domain.ERole;
+import com.example.chatservice.domain.Role;
+import com.example.chatservice.repository.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;

@@ -1,9 +1,9 @@
-package com.chatservice.controller;
+package com.example.chatservice.websocket;
 
-import com.chatservice.model.MessageType;
-import com.chatservice.payload.ChatMessage;
-import com.chatservice.service.MessageService;
-import com.chatservice.service.UserService;
+import com.example.chatservice.domain.MessageType;
+import com.example.chatservice.web.MessageDto;
+import com.example.chatservice.service.MessageService;
+import com.example.chatservice.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -26,7 +26,7 @@ public class ChatController {
 
     @MessageMapping("/chat.sendMessage")
     @SendTo("/topic/public")
-    public ChatMessage sendMessage(@Payload ChatMessage chatMessage) {
+    public MessageDto sendMessage(@Payload MessageDto chatMessage) {
         // Save message to database
         if (chatMessage.getChatRoomId() != null) {
             messageService.saveMessage(
@@ -41,7 +41,7 @@ public class ChatController {
     }
 
     @MessageMapping("/chat.sendPrivateMessage")
-    public void sendPrivateMessage(@Payload ChatMessage chatMessage) {
+    public void sendPrivateMessage(@Payload MessageDto chatMessage) {
         // Save private message to database
         messageService.savePrivateMessage(
                 chatMessage.getContent(),
@@ -59,7 +59,7 @@ public class ChatController {
 
     @MessageMapping("/chat.addUser")
     @SendTo("/topic/public")
-    public ChatMessage addUser(@Payload ChatMessage chatMessage,
+    public MessageDto addUser(@Payload MessageDto chatMessage,
                                 SimpMessageHeaderAccessor headerAccessor) {
         // Add username in web socket session
         headerAccessor.getSessionAttributes().put("username", chatMessage.getSender());
@@ -72,7 +72,7 @@ public class ChatController {
 
     @MessageMapping("/chat.removeUser")
     @SendTo("/topic/public")
-    public ChatMessage removeUser(@Payload ChatMessage chatMessage) {
+    public MessageDto removeUser(@Payload MessageDto chatMessage) {
         // Set user offline status
         userService.setUserOnlineStatus(chatMessage.getSender(), false);
 
