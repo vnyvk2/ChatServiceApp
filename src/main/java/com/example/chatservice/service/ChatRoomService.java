@@ -4,7 +4,7 @@ import com.example.chatservice.domain.ChatRoom;
 import com.example.chatservice.domain.RoomMembership;
 import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.ChatRoomRepository;
-import com.example.chatservice.repository.RoomMembershipRepository;
+import com.chatservice.repository.RoomMembershipRepository;
 import com.example.chatservice.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
