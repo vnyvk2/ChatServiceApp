@@ -15,6 +15,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     public WebSocketConfig(WebSocketJwtInterceptor jwtInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
+        System.out.println("✅ WebSocketConfig initialized!");
     }
 
     @Override

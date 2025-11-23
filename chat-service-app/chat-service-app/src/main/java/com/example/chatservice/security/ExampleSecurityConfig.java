@@ -39,7 +39,7 @@ public class ExampleSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Allow auth endpoints, static resources and root
                         .requestMatchers("/api/auth/**", "/", "/index.html", "/assets/**", "/css/**", "/js/**",
-                                "/ws/**")
+                                "/ws/**", "/error")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .anyRequest().authenticated())
