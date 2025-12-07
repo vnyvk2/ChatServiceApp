@@ -2,6 +2,8 @@ package com.example.chatservice.service;
 
 import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.UserRepository;
+import org.springframework.lang.NonNull;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,8 +21,9 @@ public class UserService {
     private final SimpMessagingTemplate messagingTemplate;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, SimpMessagingTemplate messagingTemplate,
-                       PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository,
+            @Autowired(required = false) SimpMessagingTemplate messagingTemplate,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.messagingTemplate = messagingTemplate;
         this.passwordEncoder = passwordEncoder;
@@ -28,7 +31,8 @@ public class UserService {
 
     // ---- New: register and authenticate ----
     @Transactional
-    public User registerUser(String username, String rawPassword, String displayName, String email, String phoneNumber) {
+    public User registerUser(String username, String rawPassword, String displayName, String email,
+            String phoneNumber) {
         if (userRepository.existsByUsername(username)) {
             throw new RuntimeException("Username already exists");
         }
@@ -63,7 +67,7 @@ public class UserService {
 
     // ---- Existing methods you had (kept/merged) ----
     @Transactional
-    public void updateUserStatus(Long userId, User.UserStatus status) {
+    public void updateUserStatus(@NonNull Long userId, User.UserStatus status) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
@@ -72,16 +76,14 @@ public class UserService {
             user.setLastSeenAt(Instant.now());
             userRepository.save(user);
 
-            if (!oldStatus.equals(status)) {
+            if (!oldStatus.equals(status) && messagingTemplate != null) {
                 Map<String, Object> statusEvent = Map.of(
                         "type", "STATUS_CHANGED",
                         "user", Map.of(
                                 "username", user.getUsername(),
                                 "displayName", user.getDisplayName(),
-                                "status", status.toString()
-                        ),
-                        "timestamp", System.currentTimeMillis()
-                );
+                                "status", status.toString()),
+                        "timestamp", System.currentTimeMillis());
                 messagingTemplate.convertAndSend("/topic/user-status/" + user.getUsername(), statusEvent);
             }
         }
@@ -103,7 +105,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<User> findById(Long id) {
+    public Optional<User> findById(@NonNull Long id) {
         return userRepository.findById(id);
     }
 
@@ -113,7 +115,7 @@ public class UserService {
     }
 
     @Transactional
-    public User saveUser(User user) {
+    public User saveUser(@NonNull User user) {
         return userRepository.save(user);
     }
 
@@ -133,7 +135,7 @@ public class UserService {
     }
 
     @Transactional
-    public void updateLastSeen(Long userId) {
+    public void updateLastSeen(@NonNull Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isPresent()) {
             User user = userOpt.get();

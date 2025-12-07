@@ -20,4 +20,12 @@ public class Role {
     public Role(ERole name) {
         this.name = name;
     }
+
+    public Long getId() {
+        return id;
+    }
+
+    public ERole getName() {
+        return name;
+    }
 }

@@ -1,35 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Login - ChatService</title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body>
-<h2>Welcome Back</h2>
-<form id="loginForm">
-    <input type="text" name="username" placeholder="Username" required /><br>
-    <input type="password" name="password" placeholder="Password" required /><br>
-    <button type="submit">Sign In</button>
-</form>
-<p>Don't have an account? <a href="/signup.html">Sign up</a></p>
 
-<script>
-    document.getElementById("loginForm").addEventListener("submit", async function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData);
-        let res = await fetch("/api/auth/signin", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
+<body class="auth-page">
+    <div class="auth-container">
+        <h2>Welcome Back</h2>
+        <p>Sign in to continue to ChatService</p>
+        <form id="loginForm" class="auth-form">
+            <div class="form-group">
+                <input type="text" class="input-field" name="username" placeholder="Username" required />
+            </div>
+            <div class="form-group">
+                <input type="password" class="input-field" name="password" placeholder="Password" required />
+            </div>
+            <button type="submit" class="btn-primary">Sign In</button>
+        </form>
+        <div class="auth-footer">
+            <p>Don't have an account? <a href="/signup.html">Create account</a></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            let res = await fetch("/api/auth/signin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                window.location.href = "/chat.html";
+            } else {
+                alert("Login failed!");
+            }
         });
-        if(res.ok){
-            window.location.href = "/chat.html";
-        } else {
-            alert("Login failed!");
-        }
-    });
     </script>
 </body>
+
 </html>

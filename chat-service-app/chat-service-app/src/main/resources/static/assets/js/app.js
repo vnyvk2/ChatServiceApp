@@ -234,88 +234,88 @@ class ChatApp {
     // minor shim to match bindings
     // WebSocket Methods
     connectWebSocket() {
-                const socket = new SockJS('/ws');
-                this.stompClient = Stomp.over(socket);
+        const socket = new SockJS('/ws');
+        this.stompClient = Stomp.over(socket);
 
-                this.stompClient.connect(
-                    { 'Authorization': 'Bearer ' + this.token },
-                    (frame) => {
-                        console.log('Connected: ' + frame);
-                        this.onWebSocketConnected();
-                    },
-                    (error) => {
-                        console.error('WebSocket connection error:', error);
-                        this.showToast('Connection failed. Retrying...', 'error');
-                        setTimeout(() => this.connectWebSocket(), 5000);
-                    }
-                );
+        this.stompClient.connect(
+            { 'Authorization': 'Bearer ' + this.token },
+            (frame) => {
+                console.log('Connected: ' + frame);
+                this.onWebSocketConnected();
+            },
+            (error) => {
+                console.error('WebSocket connection error:', error);
+                this.showToast('Connection failed. Retrying...', 'error');
+                setTimeout(() => this.connectWebSocket(), 5000);
             }
+        );
+    }
 
-     onWebSocketConnected() {
-                // Subscribe to user-specific channels
-                this.stompClient.subscribe('/user/topic/user-status/' + this.currentUser.username, (message) => {
-                    const statusUpdate = JSON.parse(message.body);
-                    console.log('Status update:', statusUpdate);
-                });
+    onWebSocketConnected() {
+        // Subscribe to user-specific channels
+        this.stompClient.subscribe('/user/topic/user-status/' + this.currentUser.username, (message) => {
+            const statusUpdate = JSON.parse(message.body);
+            console.log('Status update:', statusUpdate);
+        });
 
-                // Subscribe to error messages
-                this.stompClient.subscribe('/user/queue/errors', (message) => {
-                    const error = JSON.parse(message.body);
-                    console.error('WebSocket error:', error);
-                    this.showToast('Error: ' + error.message, 'error');
-                });
+        // Subscribe to error messages
+        this.stompClient.subscribe('/user/queue/errors', (message) => {
+            const error = JSON.parse(message.body);
+            console.error('WebSocket error:', error);
+            this.showToast('Error: ' + error.message, 'error');
+        });
 
-                this.showToast('Connected successfully!', 'success');
+        this.showToast('Connected successfully!', 'success');
+    }
+
+    // Room Management Methods
+    async loadMyRooms() {
+        try {
+            const response = await fetch('/api/rooms/my-rooms', {
+                headers: { 'Authorization': 'Bearer ' + this.token }
+            });
+
+            if (response.ok) {
+                const rooms = await response.json();
+                this.displayMyRooms(rooms);
             }
+        } catch (error) {
+            console.error('Error loading rooms:', error);
+            this.showToast('Failed to load rooms', 'error');
+        }
+    }
 
-            // Room Management Methods
-            async loadMyRooms() {
-                try {
-                    const response = await fetch('/api/rooms/my-rooms', {
-                        headers: { 'Authorization': 'Bearer ' + this.token }
-                    });
+    async loadAvailableRooms() {
+        try {
+            const response = await fetch('/api/rooms/available', {
+                headers: { 'Authorization': 'Bearer ' + this.token }
+            });
 
-                    if (response.ok) {
-                        const rooms = await response.json();
-                        this.displayMyRooms(rooms);
-                    }
-                } catch (error) {
-                    console.error('Error loading rooms:', error);
-                    this.showToast('Failed to load rooms', 'error');
-                }
+            if (response.ok) {
+                const rooms = await response.json();
+                this.displayAvailableRooms(rooms);
             }
+        } catch (error) {
+            console.error('Error loading available rooms:', error);
+        }
+    }
 
-            async loadAvailableRooms() {
-                try {
-                    const response = await fetch('/api/rooms/available', {
-                        headers: { 'Authorization': 'Bearer ' + this.token }
-                    });
+    displayMyRooms(rooms) {
+        const roomList = document.getElementById('room-list');
+        roomList.innerHTML = '';
 
-                    if (response.ok) {
-                        const rooms = await response.json();
-                        this.displayAvailableRooms(rooms);
-                    }
-                } catch (error) {
-                    console.error('Error loading available rooms:', error);
-                }
-            }
+        if (rooms.length === 0) {
+            roomList.innerHTML = '<div class="no-rooms">No rooms joined yet</div>';
+            return;
+        }
 
-            displayMyRooms(rooms) {
-                const roomList = document.getElementById('room-list');
-                roomList.innerHTML = '';
+        rooms.forEach(membership => {
+            const room = membership.room;
+            const roomElement = document.createElement('div');
+            roomElement.className = 'room-item';
+            roomElement.onclick = (e) => this.selectRoom(room.id, room.name, room.roomType, e);
 
-                if (rooms.length === 0) {
-                    roomList.innerHTML = '<div class="no-rooms">No rooms joined yet</div>';
-                    return;
-                }
-
-                rooms.forEach(membership => {
-                    const room = membership.room;
-                    const roomElement = document.createElement('div');
-                    roomElement.className = 'room-item';
-                    roomElement.onclick = (e) => this.selectRoom(room.id, room.name, room.roomType, e);
-
-                    roomElement.innerHTML = `
+            roomElement.innerHTML = `
                         <div class="room-item-header">
                             <div class="room-name">${this.escapeHtml(room.name)}</div>
                             <div class="room-actions-btn">
@@ -328,25 +328,25 @@ class ChatApp {
                         ${room.description ? `<div class="room-description">${this.escapeHtml(room.description)}</div>` : ''}
                     `;
 
-                    roomList.appendChild(roomElement);
-                });
-            }
+            roomList.appendChild(roomElement);
+        });
+    }
 
-            displayAvailableRooms(rooms) {
-                const availableRooms = document.getElementById('available-rooms');
-                availableRooms.innerHTML = '';
+    displayAvailableRooms(rooms) {
+        const availableRooms = document.getElementById('available-rooms');
+        availableRooms.innerHTML = '';
 
-                if (rooms.length === 0) {
-                    availableRooms.innerHTML = '<div class="no-rooms">No public rooms available</div>';
-                    return;
-                }
+        if (rooms.length === 0) {
+            availableRooms.innerHTML = '<div class="no-rooms">No public rooms available</div>';
+            return;
+        }
 
-                rooms.forEach(room => {
-                    const roomElement = document.createElement('div');
-                    roomElement.className = 'available-room-item';
-                    roomElement.onclick = (e) => { e.stopPropagation && e.stopPropagation(); this.joinRoom(room.id); };
+        rooms.forEach(room => {
+            const roomElement = document.createElement('div');
+            roomElement.className = 'available-room-item';
+            roomElement.onclick = (e) => { e.stopPropagation && e.stopPropagation(); this.joinRoom(room.id); };
 
-                    roomElement.innerHTML = `
+            roomElement.innerHTML = `
                         <div class="room-item-name">${this.escapeHtml(room.name)}</div>
                         ${room.description ? `<div class="room-item-desc">${this.escapeHtml(room.description)}</div>` : ''}
                         <div class="room-item-meta">
@@ -357,137 +357,143 @@ class ChatApp {
                         </div>
                     `;
 
-                    availableRooms.appendChild(roomElement);
-                });
+            availableRooms.appendChild(roomElement);
+        });
+    }
+
+    async selectRoom(roomId, roomName, roomType, e = null) {
+        // Unsubscribe from previous room if any
+        if (this.currentRoom) {
+            this.unsubscribeFromRoom(this.currentRoom);
+        }
+
+        this.currentRoom = roomId;
+        const currentRoomNameEl = document.getElementById('current-room-name');
+        if (currentRoomNameEl) currentRoomNameEl.textContent = roomName;
+        document.getElementById('chat-input-area').classList.remove('hidden');
+
+        // Update active room styling
+        document.querySelectorAll('.room-item').forEach(item => item.classList.remove('active'));
+        // if event element exists, mark its closest .room-item as active
+        try {
+            const roomItemEl = e && (e.currentTarget || e.target) ? (e.currentTarget || e.target).closest('.room-item') : null;
+            if (roomItemEl) {
+                roomItemEl.classList.add('active');
+            } else {
+                // fallback: find element by data attribute if you set one
+                // document.querySelector(`.room-item[data-room-id="${roomId}"]`)?.classList.add('active');
             }
+        } catch (err) {
+            // non-fatal
+            console.warn('Could not set active class for room item', err);
+        }
 
-            async selectRoom(roomId, roomName, roomType, e = null) {
-                // Unsubscribe from previous room if any
-                if (this.currentRoom) {
-                    this.unsubscribeFromRoom(this.currentRoom);
-                }
+        // Subscribe to room channels
+        if (this.stompClient && this.stompClient.connected) {
+            this.subscribeToRoom(roomId);
+        }
 
-                this.currentRoom = roomId;
-                const currentRoomNameEl = document.getElementById('current-room-name');
-                if (currentRoomNameEl) currentRoomNameEl.textContent = roomName;
-                document.getElementById('chat-input-area').classList.remove('hidden');
+        // Load room data
+        await Promise.all([
+            this.loadRoomMembers(roomId),
+            this.loadMessages(roomId)
+        ]);
 
-                // Update active room styling
-                document.querySelectorAll('.room-item').forEach(item => item.classList.remove('active'));
-                // if event element exists, mark its closest .room-item as active
-                try {
-                    const roomItemEl = e && (e.currentTarget || e.target) ? (e.currentTarget || e.target).closest('.room-item') : null;
-                    if (roomItemEl) {
-                        roomItemEl.classList.add('active');
-                    } else {
-                        // fallback: find element by data attribute if you set one
-                        // document.querySelector(`.room-item[data-room-id="${roomId}"]`)?.classList.add('active');
-                    }
-                } catch (err) {
-                    // non-fatal
-                    console.warn('Could not set active class for room item', err);
-                }
+        // Clear welcome message
+        const welcomeMessage = document.querySelector('.welcome-message');
+        if (welcomeMessage) {
+            welcomeMessage.style.display = 'none';
+        }
+    }
 
-                // Subscribe to room channels
-                if (this.stompClient && this.stompClient.connected) {
-                    this.subscribeToRoom(roomId);
-                }
+    subscribeToRoom(roomId) {
+        // Subscribe to room messages
+        this.stompClient.subscribe('/topic/rooms/' + roomId, (message) => {
+            const messageData = JSON.parse(message.body);
+            this.displayMessage(messageData);
+        });
 
-                // Load room data
-                await Promise.all([
-                    this.loadRoomMembers(roomId),
-                    this.loadMessages(roomId)
-                ]);
+        // Subscribe to room events
+        this.stompClient.subscribe('/topic/rooms/' + roomId + '/events', (message) => {
+            const event = JSON.parse(message.body);
+            this.displayEvent(event);
+        });
 
-                // Clear welcome message
-                const welcomeMessage = document.querySelector('.welcome-message');
-                if (welcomeMessage) {
-                    welcomeMessage.style.display = 'none';
-                }
+        // Subscribe to typing indicators
+        this.stompClient.subscribe('/topic/rooms/' + roomId + '/typing', (message) => {
+            const typing = JSON.parse(message.body);
+            this.displayTyping(typing);
+        });
+
+        // Send join notification
+        this.stompClient.send('/app/rooms/' + roomId + '/join-notification', {}, JSON.stringify({}));
+    }
+
+    unsubscribeFromRoom(roomId) {
+        // Send leave notification
+        if (this.stompClient && this.stompClient.connected) {
+            this.stompClient.send('/app/rooms/' + roomId + '/leave-notification', {}, JSON.stringify({}));
+        }
+    }
+
+    async loadRoomMembers(roomId) {
+        try {
+            const response = await fetch(`/api/rooms/${roomId}/members`, {
+                headers: { 'Authorization': 'Bearer ' + this.token }
+            });
+
+            if (response.ok) {
+                const members = await response.json();
+                this.displayRoomMembers(members);
             }
+        } catch (error) {
+            console.error('Error loading members:', error);
+        }
+    }
 
-            subscribeToRoom(roomId) {
-                // Subscribe to room messages
-                this.stompClient.subscribe('/topic/rooms/' + roomId, (message) => {
-                    const messageData = JSON.parse(message.body);
-                    this.displayMessage(messageData);
-                });
-
-                // Subscribe to room events
-                this.stompClient.subscribe('/topic/rooms/' + roomId + '/events', (message) => {
-                    const event = JSON.parse(message.body);
-                    this.displayEvent(event);
-                });
-
-                // Subscribe to typing indicators
-                this.stompClient.subscribe('/topic/rooms/' + roomId + '/typing', (message) => {
-                    const typing = JSON.parse(message.body);
-                    this.displayTyping(typing);
-                });
-
-                // Send join notification
-                this.stompClient.send('/app/rooms/' + roomId + '/join-notification', {}, JSON.stringify({}));
-            }
-
-            unsubscribeFromRoom(roomId) {
-                // Send leave notification
-                if (this.stompClient && this.stompClient.connected) {
-                    this.stompClient.send('/app/rooms/' + roomId + '/leave-notification', {}, JSON.stringify({}));
+    async loadMessages(roomId) {
+        try {
+            // Corrected URL to match MessageController
+            const response = await fetch(`/api/messages/rooms/${roomId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
                 }
-            }
+            });
+            if (response.ok) {
+                const data = await response.json();
 
-            async loadRoomMembers(roomId) {
-                try {
-                    const response = await fetch(`/api/rooms/${roomId}/members`, {
-                        headers: { 'Authorization': 'Bearer ' + this.token }
-                    });
-
-                    if (response.ok) {
-                        const members = await response.json();
-                        this.displayRoomMembers(members);
-                    }
-                } catch (error) {
-                    console.error('Error loading members:', error);
+                // Handle Page<MessageDto> response
+                if (data.content) {
+                    // Reverse to show oldest first in chat window
+                    this.displayMessages(data.content.reverse());
+                } else if (Array.isArray(data)) {
+                    this.displayMessages(data);
                 }
+            } else {
+                console.error('Failed to load messages:', response.status);
+                this.showToast('Error loading messages', 'error');
             }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+            this.showToast('Error loading messages', 'error');
+        }
+    }
 
-            async loadMessages(roomId) {
-                try {
-                    const response = await fetch(`/api/chat/messages/${roomId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${this.token}`
-                        }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
+    displayRoomMembers(members) {
+        const onlineUsers = document.getElementById('online-users');
+        const membersCount = document.getElementById('room-members-count');
 
-                        // ✅ FIX: check if paginated or not
-                        if (data.content) {
-                            this.displayMessages(data.content.reverse());
-                        } else {
-                            this.displayMessages(data);
-                        }
-                    }
-                } catch (error) {
-                    this.showToast('Error loading messages', 'error');
-                }
-            }
+        membersCount.textContent = `${members.length} member${members.length !== 1 ? 's' : ''}`;
 
-            displayRoomMembers(members) {
-                const onlineUsers = document.getElementById('online-users');
-                const membersCount = document.getElementById('room-members-count');
+        onlineUsers.innerHTML = '';
+        members.forEach(member => {
+            const memberElement = document.createElement('div');
+            memberElement.className = 'member-item';
 
-                membersCount.textContent = `${members.length} member${members.length !== 1 ? 's' : ''}`;
+            const statusClass = 'status-' + member.status.toLowerCase();
+            const initials = member.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
 
-                onlineUsers.innerHTML = '';
-                members.forEach(member => {
-                    const memberElement = document.createElement('div');
-                    memberElement.className = 'member-item';
-
-                    const statusClass = 'status-' + member.status.toLowerCase();
-                    const initials = member.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
-
-                    memberElement.innerHTML = `
+            memberElement.innerHTML = `
                         <div class="member-avatar">
                             ${initials}
                             <div class="status-indicator ${statusClass}"></div>
@@ -499,39 +505,39 @@ class ChatApp {
                         <div class="member-role">${member.role.toLowerCase()}</div>
                     `;
 
-                    onlineUsers.appendChild(memberElement);
-                });
-            }
+            onlineUsers.appendChild(memberElement);
+        });
+    }
 
-            // Replace the old displayMessages function in app.js with this one.
+    // Replace the old displayMessages function in app.js with this one.
 
-            displayMessages(messages) {
-                const messageArea = document.getElementById('chat-messages');
-                messageArea.innerHTML = '';
+    displayMessages(messages) {
+        const messageArea = document.getElementById('chat-messages');
+        messageArea.innerHTML = '';
 
-                // Safety check to ensure we have a valid array to work with
-                if (!messages || !Array.isArray(messages)) {
-                    console.error("displayMessages received invalid data:", messages);
-                    return;
-                }
+        // Safety check to ensure we have a valid array to work with
+        if (!messages || !Array.isArray(messages)) {
+            console.error("displayMessages received invalid data:", messages);
+            return;
+        }
 
-                messages.forEach(messageData => {
-                    const messageElement = document.createElement('div');
-                    const isOwnMessage = messageData.sender.username === this.currentUser.username;
-                    messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
+        messages.forEach(messageData => {
+            const messageElement = document.createElement('div');
+            const isOwnMessage = messageData.sender.username === this.currentUser.username;
+            messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
 
-                    // Ensure createdAt exists before creating a Date from it
-                    const timestamp = messageData.createdAt ?
-                        new Date(messageData.createdAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }) :
-                        '';
+            // Ensure createdAt exists before creating a Date from it
+            const timestamp = messageData.createdAt ?
+                new Date(messageData.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }) :
+                '';
 
-                    const senderDisplayName = messageData.sender ? this.escapeHtml(messageData.sender.displayName) : 'Unknown User';
-                    const messageText = messageData.text ? this.escapeHtml(messageData.text) : '...';
+            const senderDisplayName = messageData.sender ? this.escapeHtml(messageData.sender.displayName) : 'Unknown User';
+            const messageText = messageData.text ? this.escapeHtml(messageData.text) : '...';
 
-                    messageElement.innerHTML = `
+            messageElement.innerHTML = `
                         <div class="message-content">
                             <div class="message-header">
                                 <span class="message-sender">${senderDisplayName}</span>
@@ -541,27 +547,27 @@ class ChatApp {
                         </div>
                     `;
 
-                    messageArea.appendChild(messageElement);
-                });
+            messageArea.appendChild(messageElement);
+        });
 
-                this.scrollToBottom();
-            }
+        this.scrollToBottom();
+    }
 
-            displayMessage(messageData, animate = true) {
-                const messageArea = document.getElementById('chat-messages');
-                const messageElement = document.createElement('div');
+    displayMessage(messageData, animate = true) {
+        const messageArea = document.getElementById('chat-messages');
+        const messageElement = document.createElement('div');
 
-                const isOwnMessage = messageData.sender.username === this.currentUser.username;
-                messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
+        const isOwnMessage = messageData.sender.username === this.currentUser.username;
+        messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
 
-                const timestamp = new Date(messageData.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+        const timestamp = new Date(messageData.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
 
-                const initials = messageData.sender.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
+        const initials = messageData.sender.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
 
-                messageElement.innerHTML = `
+        messageElement.innerHTML = `
                     <div class="message-avatar">${initials}</div>
                     <div class="message-content">
                         <div class="message-header">
@@ -573,324 +579,324 @@ class ChatApp {
                     </div>
                 `;
 
-                if (animate) {
-                    messageElement.style.opacity = '0';
-                    messageElement.style.transform = 'translateY(20px)';
+        if (animate) {
+            messageElement.style.opacity = '0';
+            messageElement.style.transform = 'translateY(20px)';
+        }
+
+        messageArea.appendChild(messageElement);
+
+        if (animate) {
+            requestAnimationFrame(() => {
+                messageElement.style.transition = 'all 0.3s ease';
+                messageElement.style.opacity = '1';
+                messageElement.style.transform = 'translateY(0)';
+            });
+        }
+
+        this.scrollToBottom();
+    }
+
+    displayEvent(event) {
+        const messageArea = document.getElementById('chat-messages');
+        const eventElement = document.createElement('div');
+        eventElement.className = 'system-message';
+
+        const timestamp = new Date(event.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        eventElement.innerHTML = `${this.escapeHtml(event.message)} <span style="font-size: 0.8em; opacity: 0.7;">${timestamp}</span>`;
+        messageArea.appendChild(eventElement);
+
+        this.scrollToBottom();
+
+        // Refresh member list if needed
+        if (event.type === 'USER_JOINED' || event.type === 'USER_LEFT') {
+            this.loadRoomMembers(this.currentRoom);
+        }
+    }
+
+    displayTyping(typing) {
+        const typingIndicator = document.getElementById('typing-indicator');
+
+        if (typing.isTyping && typing.user.username !== this.currentUser.username) {
+            typingIndicator.textContent = `${typing.user.displayName} is typing...`;
+            typingIndicator.style.display = 'block';
+
+            // Clear typing indicator after 3 seconds
+            setTimeout(() => {
+                if (typingIndicator.textContent.includes(typing.user.displayName)) {
+                    typingIndicator.textContent = '';
+                    typingIndicator.style.display = 'none';
                 }
+            }, 3000);
+        }
+    }
 
-                messageArea.appendChild(messageElement);
+    // Message Sending
+    sendMessage() {
+        const messageInput = document.getElementById('message-input');
+        const text = messageInput.value.trim();
 
-                if (animate) {
-                    requestAnimationFrame(() => {
-                        messageElement.style.transition = 'all 0.3s ease';
-                        messageElement.style.opacity = '1';
-                        messageElement.style.transform = 'translateY(0)';
-                    });
-                }
+        if (!text || !this.currentRoom || !this.stompClient || !this.stompClient.connected) {
+            return;
+        }
 
-                this.scrollToBottom();
+        this.stompClient.send('/app/rooms/' + this.currentRoom + '/send', {},
+            JSON.stringify({ text: text }));
+
+        messageInput.value = '';
+        this.handleTyping(false);
+    }
+
+    handleKeyPress(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            this.sendMessage();
+        } else {
+            this.handleTyping(true);
+        }
+    }
+
+    handleTyping(isTyping = true) {
+        if (!this.currentRoom || !this.stompClient || !this.stompClient.connected) {
+            return;
+        }
+
+        // Clear existing timer
+        if (this.typingTimer) {
+            clearTimeout(this.typingTimer);
+        }
+
+        // Send typing start if not already typing
+        if (isTyping && !this.isTyping) {
+            this.isTyping = true;
+            this.stompClient.send('/app/rooms/' + this.currentRoom + '/typing', {},
+                JSON.stringify({ isTyping: true }));
+        }
+
+        // Set timer to send typing stop
+        this.typingTimer = setTimeout(() => {
+            if (this.isTyping) {
+                this.isTyping = false;
+                this.stompClient.send('/app/rooms/' + this.currentRoom + '/typing', {},
+                    JSON.stringify({ isTyping: false }));
             }
+        }, 1000);
+    }
 
-            displayEvent(event) {
-                const messageArea = document.getElementById('chat-messages');
-                const eventElement = document.createElement('div');
-                eventElement.className = 'system-message';
+    // Room Actions
+    async createRoom() {
+        const name = document.getElementById('room-name').value.trim();
+        const description = document.getElementById('room-description').value.trim();
+        const roomType = document.getElementById('room-type').value;
+        const isPrivate = document.getElementById('room-private').checked;
 
-                const timestamp = new Date(event.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+        if (!name) {
+            this.showToast('Room name is required', 'error');
+            return;
+        }
 
-                eventElement.innerHTML = `${this.escapeHtml(event.message)} <span style="font-size: 0.8em; opacity: 0.7;">${timestamp}</span>`;
-                messageArea.appendChild(eventElement);
+        try {
+            const response = await fetch('/api/rooms', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + this.token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, description, roomType, isPrivate })
+            });
 
-                this.scrollToBottom();
+            if (response.ok) {
+                const room = await response.json();
+                this.closeModals();
+                this.loadMyRooms();
+                this.loadAvailableRooms();
+                this.showToast('Room created successfully!', 'success');
 
-                // Refresh member list if needed
-                if (event.type === 'USER_JOINED' || event.type === 'USER_LEFT') {
-                    this.loadRoomMembers(this.currentRoom);
-                }
+                // Clear form
+                document.getElementById('room-name').value = '';
+                document.getElementById('room-description').value = '';
+                document.getElementById('room-private').checked = false;
+            } else {
+                const error = await response.json();
+                this.showToast(error.error || 'Failed to create room', 'error');
             }
+        } catch (error) {
+            console.error('Error creating room:', error);
+            this.showToast('Network error. Please try again.', 'error');
+        }
+    }
 
-            displayTyping(typing) {
-                const typingIndicator = document.getElementById('typing-indicator');
-
-                if (typing.isTyping && typing.user.username !== this.currentUser.username) {
-                    typingIndicator.textContent = `${typing.user.displayName} is typing...`;
-                    typingIndicator.style.display = 'block';
-
-                    // Clear typing indicator after 3 seconds
-                    setTimeout(() => {
-                        if (typingIndicator.textContent.includes(typing.user.displayName)) {
-                            typingIndicator.textContent = '';
-                            typingIndicator.style.display = 'none';
-                        }
-                    }, 3000);
+    async joinRoom(roomId) {
+        try {
+            const response = await fetch(`/api/rooms/${roomId}/join`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + this.token,
+                    'Content-Type': 'application/json'
                 }
+            });
+
+            if (response.ok) {
+                this.closeModals();
+                this.loadMyRooms();
+                this.showToast('Joined room successfully!', 'success');
+            } else {
+                const error = await response.json();
+                this.showToast(error.error || 'Failed to join room', 'error');
             }
+        } catch (error) {
+            console.error('Error joining room:', error);
+            this.showToast('Network error. Please try again.', 'error');
+        }
+    }
 
-            // Message Sending
-            sendMessage() {
-                const messageInput = document.getElementById('message-input');
-                const text = messageInput.value.trim();
+    async leaveRoom(roomId) {
+        if (!confirm('Are you sure you want to leave this room?')) {
+            return;
+        }
 
-                if (!text || !this.currentRoom || !this.stompClient || !this.stompClient.connected) {
-                    return;
+        try {
+            const response = await fetch(`/api/rooms/${roomId}/leave`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + this.token,
+                    'Content-Type': 'application/json'
                 }
+            });
 
-                this.stompClient.send('/app/rooms/' + this.currentRoom + '/send', {},
-                    JSON.stringify({ text: text }));
+            if (response.ok) {
+                this.loadMyRooms();
+                this.showToast('Left room successfully!', 'success');
 
-                messageInput.value = '';
-                this.handleTyping(false);
-            }
-
-            handleKeyPress(event) {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    this.sendMessage();
-                } else {
-                    this.handleTyping(true);
-                }
-            }
-
-            handleTyping(isTyping = true) {
-                if (!this.currentRoom || !this.stompClient || !this.stompClient.connected) {
-                    return;
-                }
-
-                // Clear existing timer
-                if (this.typingTimer) {
-                    clearTimeout(this.typingTimer);
-                }
-
-                // Send typing start if not already typing
-                if (isTyping && !this.isTyping) {
-                    this.isTyping = true;
-                    this.stompClient.send('/app/rooms/' + this.currentRoom + '/typing', {},
-                        JSON.stringify({ isTyping: true }));
-                }
-
-                // Set timer to send typing stop
-                this.typingTimer = setTimeout(() => {
-                    if (this.isTyping) {
-                        this.isTyping = false;
-                        this.stompClient.send('/app/rooms/' + this.currentRoom + '/typing', {},
-                            JSON.stringify({ isTyping: false }));
-                    }
-                }, 1000);
-            }
-
-            // Room Actions
-            async createRoom() {
-                const name = document.getElementById('room-name').value.trim();
-                const description = document.getElementById('room-description').value.trim();
-                const roomType = document.getElementById('room-type').value;
-                const isPrivate = document.getElementById('room-private').checked;
-
-                if (!name) {
-                    this.showToast('Room name is required', 'error');
-                    return;
-                }
-
-                try {
-                    const response = await fetch('/api/rooms', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Bearer ' + this.token,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ name, description, roomType, isPrivate })
-                    });
-
-                    if (response.ok) {
-                        const room = await response.json();
-                        this.closeModals();
-                        this.loadMyRooms();
-                        this.loadAvailableRooms();
-                        this.showToast('Room created successfully!', 'success');
-
-                        // Clear form
-                        document.getElementById('room-name').value = '';
-                        document.getElementById('room-description').value = '';
-                        document.getElementById('room-private').checked = false;
-                    } else {
-                        const error = await response.json();
-                        this.showToast(error.error || 'Failed to create room', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error creating room:', error);
-                    this.showToast('Network error. Please try again.', 'error');
-                }
-            }
-
-            async joinRoom(roomId) {
-                try {
-                    const response = await fetch(`/api/rooms/${roomId}/join`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Bearer ' + this.token,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        this.closeModals();
-                        this.loadMyRooms();
-                        this.showToast('Joined room successfully!', 'success');
-                    } else {
-                        const error = await response.json();
-                        this.showToast(error.error || 'Failed to join room', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error joining room:', error);
-                    this.showToast('Network error. Please try again.', 'error');
-                }
-            }
-
-            async leaveRoom(roomId) {
-                if (!confirm('Are you sure you want to leave this room?')) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`/api/rooms/${roomId}/leave`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Bearer ' + this.token,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        this.loadMyRooms();
-                        this.showToast('Left room successfully!', 'success');
-
-                        // If it's the current room, clear chat
-                        if (this.currentRoom === roomId) {
-                            this.currentRoom = null;
-                            document.getElementById('current-room-name').textContent = 'Select a room to start chatting';
-                            document.getElementById('chat-input-area').classList.add('hidden');
-                            document.getElementById('chat-messages').innerHTML = `
+                // If it's the current room, clear chat
+                if (this.currentRoom === roomId) {
+                    this.currentRoom = null;
+                    document.getElementById('current-room-name').textContent = 'Select a room to start chatting';
+                    document.getElementById('chat-input-area').classList.add('hidden');
+                    document.getElementById('chat-messages').innerHTML = `
                                 <div class="welcome-message">
                                     <i class="fas fa-comments"></i>
                                     <h3>Welcome to ChatService</h3>
                                     <p>Select a room from the sidebar to start chatting</p>
                                 </div>
                             `;
-                        }
-                    } else {
-                        const error = await response.json();
-                        this.showToast(error.error || 'Failed to leave room', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error leaving room:', error);
-                    this.showToast('Network error. Please try again.', 'error');
                 }
+            } else {
+                const error = await response.json();
+                this.showToast(error.error || 'Failed to leave room', 'error');
             }
+        } catch (error) {
+            console.error('Error leaving room:', error);
+            this.showToast('Network error. Please try again.', 'error');
+        }
+    }
 
-            async createDirectMessage(username) {
-                try {
-                    const response = await fetch(`/api/chat/direct/${username}`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${this.token}`
-                        }
-                    });
-                    if (response.ok) {
-                        const room = await response.json();
-                        this.addRoom(room);
-                        this.selectRoom(room.id);
-                    }
-                } catch (error) {
-                    this.showToast('Error creating direct message', 'error');
+    async createDirectMessage(username) {
+        try {
+            const response = await fetch(`/api/chat/direct/${username}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
                 }
+            });
+            if (response.ok) {
+                const room = await response.json();
+                this.addRoom(room);
+                this.selectRoom(room.id);
             }
+        } catch (error) {
+            this.showToast('Error creating direct message', 'error');
+        }
+    }
 
 
-            // Status Management
-            async updateStatus() {
-                const newStatus = document.getElementById('status-select').value.toUpperCase();
-                this.updateUserStatus(newStatus);
-            }
+    // Status Management
+    async updateStatus() {
+        const newStatus = document.getElementById('status-select').value.toUpperCase();
+        this.updateUserStatus(newStatus);
+    }
 
-            updateUserStatus(status) {
-                if (this.stompClient && this.stompClient.connected) {
-                    this.stompClient.send('/app/user/status', {},
-                        JSON.stringify({ status: status }));
-                }
-            }
+    updateUserStatus(status) {
+        if (this.stompClient && this.stompClient.connected) {
+            this.stompClient.send('/app/user/status', {},
+                JSON.stringify({ status: status }));
+        }
+    }
 
-            // Modal Management
-            showCreateRoom() {
-                document.getElementById('modal-overlay').classList.remove('hidden');
-                document.getElementById('create-room-modal').classList.remove('hidden');
-            }
+    // Modal Management
+    showCreateRoom() {
+        document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById('create-room-modal').classList.remove('hidden');
+    }
 
-            showJoinRoom() {
-                this.loadAvailableRooms();
-                document.getElementById('modal-overlay').classList.remove('hidden');
-                document.getElementById('join-room-modal').classList.remove('hidden');
-            }
+    showJoinRoom() {
+        this.loadAvailableRooms();
+        document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById('join-room-modal').classList.remove('hidden');
+    }
 
-            showDirectMessage() {
-                document.getElementById('modal-overlay').classList.remove('hidden');
-                document.getElementById('direct-message-modal').classList.remove('hidden');
-            }
+    showDirectMessage() {
+        document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById('direct-message-modal').classList.remove('hidden');
+    }
 
-            closeModals() {
-                document.getElementById('modal-overlay').classList.add('hidden');
-                document.querySelectorAll('.modal').forEach(modal => {
-                    modal.classList.add('hidden');
-                });
-            }
+    closeModals() {
+        document.getElementById('modal-overlay').classList.add('hidden');
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.classList.add('hidden');
+        });
+    }
 
-            // UI Helper Methods
-            toggleMembersList() {
-                const membersPanel = document.getElementById('members-panel');
-                membersPanel.classList.toggle('hidden');
-            }
+    // UI Helper Methods
+    toggleMembersList() {
+        const membersPanel = document.getElementById('members-panel');
+        membersPanel.classList.toggle('hidden');
+    }
 
-            scrollToBottom() {
-                const messageArea = document.getElementById('chat-messages');
-                messageArea.scrollTop = messageArea.scrollHeight;
-            }
+    scrollToBottom() {
+        const messageArea = document.getElementById('chat-messages');
+        messageArea.scrollTop = messageArea.scrollHeight;
+    }
 
-            adjustLayout() {
-                // Handle responsive layout adjustments
-                const isMobile = window.innerWidth < 768;
-                const sidebar = document.querySelector('.sidebar');
-                const mainContent = document.querySelector('.main-content');
+    adjustLayout() {
+        // Handle responsive layout adjustments
+        const isMobile = window.innerWidth < 768;
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
 
-                if (isMobile) {
-                    // Mobile layout adjustments
-                    sidebar?.classList.add('mobile');
-                    mainContent?.classList.add('mobile');
-                } else {
-                    sidebar?.classList.remove('mobile');
-                    mainContent?.classList.remove('mobile');
-                }
-            }
+        if (isMobile) {
+            // Mobile layout adjustments
+            sidebar?.classList.add('mobile');
+            mainContent?.classList.add('mobile');
+        } else {
+            sidebar?.classList.remove('mobile');
+            mainContent?.classList.remove('mobile');
+        }
+    }
 
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
-            showToast(message, type = 'info', duration = 5000) {
-                const toastContainer = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
+    showToast(message, type = 'info', duration = 5000) {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
 
-                const icons = {
-                    success: 'fas fa-check-circle',
-                    error: 'fas fa-exclamation-circle',
-                    warning: 'fas fa-exclamation-triangle',
-                    info: 'fas fa-info-circle'
-                };
+        const icons = {
+            success: 'fas fa-check-circle',
+            error: 'fas fa-exclamation-circle',
+            warning: 'fas fa-exclamation-triangle',
+            info: 'fas fa-info-circle'
+        };
 
-                toast.innerHTML = `
+        toast.innerHTML = `
                     <div class="toast-icon">
                         <i class="${icons[type] || icons.info}"></i>
                     </div>
@@ -902,22 +908,62 @@ class ChatApp {
                     </button>
                 `;
 
-                toastContainer.appendChild(toast);
+        toastContainer.appendChild(toast);
 
-                // Auto-remove after duration
-                setTimeout(() => {
-                    if (toast.parentElement) {
-                        toast.style.animation = 'fadeOut 0.3s ease forwards';
-                        setTimeout(() => toast.remove(), 300);
-                    }
-                }, duration);
+        // Auto-remove after duration
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
             }
+        }, duration);
+    }
 
 
 
 
     async startDirectMessage() {
-        return this.createDirectMessage ? this.createDirectMessage() : null;
+        const phoneNumber = document.getElementById('dm-phone')?.value.trim();
+        const username = document.getElementById('dm-username')?.value.trim();
+
+        if (!phoneNumber && !username) {
+            this.showToast('Please enter a phone number or username', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/rooms/direct-message', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + this.token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phoneNumber: phoneNumber || null,
+                    username: username || null
+                })
+            });
+
+            if (response.ok) {
+                const room = await response.json();
+                this.closeModals();
+                this.loadMyRooms();
+
+                // Clear inputs
+                document.getElementById('dm-phone').value = '';
+                document.getElementById('dm-username').value = '';
+
+                // Select the new DM room
+                this.selectRoom(room.id, room.name, room.roomType);
+                this.showToast('Direct message started!', 'success');
+            } else {
+                const error = await response.json();
+                this.showToast(error.error || 'User not found', 'error');
+            }
+        } catch (error) {
+            console.error('Error starting direct message:', error);
+            this.showToast('Failed to start direct message', 'error');
+        }
     }
 
 
@@ -949,6 +995,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Modal Action Button Listeners ---
     document.getElementById('create-room-btn').addEventListener('click', () => chatApp.createRoom());
     document.getElementById('start-dm-btn').addEventListener('click', () => chatApp.startDirectMessage());
+
+    // --- Logout Button Listener ---
+    document.getElementById('logout-btn').addEventListener('click', () => chatApp.logout());
 
     // --- Modal Cancel Button Listeners ---
     document.querySelectorAll('.cancel-modal-btn').forEach(btn => {

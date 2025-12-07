@@ -1,78 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Chat - ChatService</title>
     <link href="assets/css/style.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
-<div class="chat-container" id="chat-section">
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="user-info">
-            <span id="current-user">Loading...</span>
-            <select id="status-select" onchange="updateStatus()">
-                <option value="ONLINE">🟢 Online</option>
-                <option value="AWAY">🟡 Away</option>
-                <option value="OFFLINE">⚫ Offline</option>
-            </select>
-            <button onclick="logout()">Logout</button>
+    <div id="chat-section">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info">
+                    <span id="current-user" class="user-name">Loading...</span>
+                    <select id="status-select">
+                        <option value="ONLINE">🟢 Online</option>
+                        <option value="AWAY">🟡 Away</option>
+                        <option value="OFFLINE">⚫ Offline</option>
+                    </select>
+                </div>
+                <button class="btn-logout" id="logout-btn" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+
+            <h3>Menu</h3>
+            <div class="action-buttons">
+                <button class="btn-ghost btn-ghost-primary" id="show-create-room-btn"><i class="fas fa-plus-circle"></i>
+                    Create Room</button>
+                <button class="btn-ghost" id="show-join-room-btn"><i class="fas fa-door-open"></i> Join Room</button>
+                <button class="btn-ghost" id="show-dm-btn"><i class="fas fa-comment-alt"></i> Direct Message</button>
+            </div>
+
+            <h3>My Rooms</h3>
+            <div id="room-list"></div>
         </div>
 
-        <h3>My Rooms</h3>
-        <div id="room-list"></div>
-        <button onclick="showCreateRoom()">+ Create Room</button>
-        <button onclick="showJoinRoom()">+ Join Room</button>
-        <button onclick="showDirectMessage()">+ Direct Message</button>
-    </div>
+        <div class="main-content">
+            <div class="chat-header">
+                <h2 id="current-room-name">Select a room</h2>
+                <div class="header-actions">
+                    <button class="btn-ghost" id="show-members-btn" onclick="toggleMembers()" class="hidden"><i
+                            class="fas fa-users"></i></button>
+                </div>
+            </div>
 
-    <!-- Chat Area -->
-    <div class="main-content">
-        <h2 id="current-room-name">Select a room</h2>
-        <div id="chat-messages"></div>
-        <div id="typing-indicator" class="hidden"></div>
-        <div id="chat-input-area" class="hidden">
-            <input type="text" id="message-input" onkeypress="handleKeyPress(event)">
-            <button onclick="sendMessage()">Send</button>
+            <div id="chat-messages">
+                <div class="welcome-message">
+                    <i class="fas fa-comments"></i>
+                    <h3>Welcome to ChatService</h3>
+                    <p>Select a room or start a conversation</p>
+                </div>
+            </div>
+            <div id="typing-indicator" class="hidden"></div>
+            <div id="chat-input-area" class="hidden">
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+
+        <!-- Members (hidden by default, can be toggled or styled as modal/pop-out) -->
+        <div id="members-panel" class="sidebar hidden"
+            style="border-left: 1px solid var(--border-light); border-right: none;">
+            <h3>Room Members (<span id="room-members-count">0</span>)</h3>
+            <div id="online-users"></div>
         </div>
     </div>
 
-    <!-- Members -->
-    <div id="members-panel" class="sidebar hidden">
-        <h3>Room Members (<span id="room-members-count">0</span>)</h3>
-        <div id="online-users"></div>
+    <script>
+        function toggleMembers() {
+            const panel = document.getElementById('members-panel');
+            if (panel) panel.classList.toggle('hidden');
+        }
+    </script>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="hidden"></div>
+    <div id="create-room-modal" class="modal hidden">
+        <input type="text" id="room-name" placeholder="Room Name">
+        <textarea id="room-description"></textarea>
+        <select id="room-type">
+            <option value="GROUP_CHAT">Group Chat</option>
+            <option value="BROADCAST">Broadcast</option>
+        </select>
+        <input type="checkbox" id="room-private"> Private?
+        <button id="create-room-btn">Create</button>
+        <button class="cancel-modal-btn">Cancel</button>
     </div>
-</div>
+    <div id="join-room-modal" class="modal hidden">
+        <div id="available-rooms"></div>
+    </div>
+    <div id="direct-message-modal" class="modal hidden">
+        <input type="text" id="dm-phone" placeholder="Phone Number">
+        <input type="text" id="dm-username" placeholder="Username">
+        <button id="start-dm-btn">Start</button>
+        <button class="cancel-modal-btn">Cancel</button>
+    </div>
 
-<!-- Modals -->
-<div id="modal-overlay" class="hidden"></div>
-<div id="create-room-modal" class="modal hidden">
-    <input type="text" id="room-name" placeholder="Room Name">
-    <textarea id="room-description"></textarea>
-    <select id="room-type">
-        <option value="GROUP_CHAT">Group Chat</option>
-        <option value="BROADCAST">Broadcast</option>
-    </select>
-    <input type="checkbox" id="room-private"> Private?
-    <button onclick="createRoom()">Create</button>
-    <button onclick="closeModals()">Cancel</button>
-</div>
-<div id="join-room-modal" class="modal hidden">
-    <div id="available-rooms"></div>
-</div>
-<div id="direct-message-modal" class="modal hidden">
-    <input type="text" id="dm-phone" placeholder="Phone Number">
-    <input type="text" id="dm-username" placeholder="Username">
-    <button onclick="createDirectMessage()">Start</button>
-    <button onclick="closeModals()">Cancel</button>
-</div>
+    <!-- Toast -->
+    <div id="toast-container"></div>
 
-<!-- Toast -->
-<div id="toast-container"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-<script src="assets/js/app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="assets/js/app.js"></script>
 </body>
+
 </html>

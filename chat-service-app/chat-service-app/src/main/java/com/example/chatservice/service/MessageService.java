@@ -6,6 +6,7 @@ import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.ChatRoomRepository;
 import com.example.chatservice.repository.MessageRepository;
 import com.example.chatservice.repository.UserRepository;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,9 +26,9 @@ public class MessageService {
     private final CryptoService cryptoService;
 
     public MessageService(MessageRepository messageRepository,
-                          UserRepository userRepository,
-                          ChatRoomRepository chatRoomRepository,
-                          CryptoService cryptoService) {
+            UserRepository userRepository,
+            ChatRoomRepository chatRoomRepository,
+            CryptoService cryptoService) {
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.chatRoomRepository = chatRoomRepository;
@@ -36,12 +37,15 @@ public class MessageService {
 
     @Transactional
     public Message saveEncrypted(Long roomId, String senderUsername, String content) {
+        System.out.println("MessageService.saveEncrypted called for room " + roomId + " by " + senderUsername);
         User sender = userRepository.findByUsername(senderUsername)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found"));
 
+        System.out.println("Encrypting content...");
         String encryptedContent = cryptoService.encrypt(content);
+        System.out.println("Content encrypted.");
 
         Message message = new Message();
         message.setRoom(room);
@@ -49,6 +53,7 @@ public class MessageService {
         message.setEncryptedContent(encryptedContent);
         message.setMessageType(Message.MessageType.TEXT);
 
+        System.out.println("Saving message entity...");
         return messageRepository.save(message);
     }
 
@@ -86,7 +91,8 @@ public class MessageService {
     // --------- NEW methods required by controller ---------
 
     /**
-     * Returns a page of messages for a room. Sorted by createdAt descending by default.
+     * Returns a page of messages for a room. Sorted by createdAt descending by
+     * default.
      */
     @Transactional(readOnly = true)
     public Page<Message> getMessages(Long roomId, int page, int size) {
@@ -99,6 +105,11 @@ public class MessageService {
      */
     @Transactional(readOnly = true)
     public String decrypt(String cipher) {
-        return cryptoService.decrypt(cipher);
+        try {
+            return cryptoService.decrypt(cipher);
+        } catch (Exception e) {
+            System.err.println("Failed to decrypt message: " + e.getMessage());
+            return "[Encrypted Message]"; // Fallback instead of failing the request
+        }
     }
 }

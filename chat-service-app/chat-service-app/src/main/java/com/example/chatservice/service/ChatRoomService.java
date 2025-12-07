@@ -6,6 +6,7 @@ import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.ChatRoomRepository;
 import com.example.chatservice.repository.RoomMembershipRepository;
 import com.example.chatservice.repository.UserRepository;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -94,7 +95,7 @@ public class ChatRoomService {
     }
 
     @Transactional
-    public RoomMembership addMember(Long roomId, Long userId) {
+    public RoomMembership addMember(@NonNull Long roomId, @NonNull Long userId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found"));
         User user = userRepository.findById(userId)
@@ -156,7 +157,7 @@ public class ChatRoomService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<ChatRoom> findRoomById(Long roomId) {
+    public Optional<ChatRoom> findRoomById(@NonNull Long roomId) {
         return chatRoomRepository.findById(roomId);
     }
 
@@ -189,7 +190,7 @@ public class ChatRoomService {
     }
 
     @Transactional
-    public void deleteRoom(Long roomId) {
+    public void deleteRoom(@NonNull Long roomId) {
         // First, deactivate all memberships
         List<RoomMembership> memberships = membershipRepository.findByRoomIdAndIsActiveTrue(roomId);
         for (RoomMembership membership : memberships) {
@@ -203,7 +204,7 @@ public class ChatRoomService {
     }
 
     @Transactional
-    public ChatRoom updateRoom(Long roomId, String name, String description, boolean isPrivate) {
+    public ChatRoom updateRoom(@NonNull Long roomId, String name, String description, boolean isPrivate) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found"));
 
@@ -233,7 +234,7 @@ public class ChatRoomService {
     }
 
     @Transactional(readOnly = true)
-    public boolean canUserAccessRoom(Long userId, Long roomId) {
+    public boolean canUserAccessRoom(@NonNull Long userId, @NonNull Long roomId) {
         Optional<ChatRoom> roomOpt = chatRoomRepository.findById(roomId);
         if (roomOpt.isEmpty()) {
             return false;

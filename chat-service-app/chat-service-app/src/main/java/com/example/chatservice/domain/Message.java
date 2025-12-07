@@ -43,4 +43,52 @@ public class Message {
     public enum MessageType {
         TEXT, IMAGE, FILE, SYSTEM
     }
+
+    public Long getId() {
+        return id;
+    }
+
+    public ChatRoom getRoom() {
+        return room;
+    }
+
+    public User getSender() {
+        return sender;
+    }
+
+    public String getEncryptedContent() {
+        return encryptedContent;
+    }
+
+    public MessageType getMessageType() {
+        return messageType;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setRoom(ChatRoom room) {
+        this.room = room;
+    }
+
+    public void setSender(User sender) {
+        this.sender = sender;
+    }
+
+    public void setEncryptedContent(String encryptedContent) {
+        this.encryptedContent = encryptedContent;
+    }
+
+    public void setMessageType(MessageType messageType) {
+        this.messageType = messageType;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 }
