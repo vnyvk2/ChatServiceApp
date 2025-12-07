@@ -202,7 +202,7 @@ class ChatApp {
         const chatSection = document.getElementById('chat-section');
 
         if (authSection) authSection.style.display = 'none';
-        if (chatSection) chatSection.style.display = 'block';
+        if (chatSection) chatSection.style.display = 'flex'; // Use flex to maintain row layout
 
         document.getElementById('current-user').textContent = this.currentUser.displayName || this.currentUser.username;
         // map statuses to select values if present
