@@ -6,7 +6,103 @@ class ChatApp {
         this.token = null;
         this.typingTimer = null;
         this.isTyping = false;
+        // Track subscriptions to unsubscribe properly
+        this.roomSubscriptions = [];
         this.init();
+    }
+
+    // ... (init and other methods remain same)
+
+    subscribeToRoom(roomId) {
+        // Clear any existing subscriptions just in case
+        this.unsubscribeFromRoom(roomId);
+
+        // Subscribe to room messages
+        const msgSub = this.stompClient.subscribe('/topic/rooms/' + roomId, (message) => {
+            const messageData = JSON.parse(message.body);
+            this.displayMessage(messageData);
+        });
+        this.roomSubscriptions.push(msgSub);
+
+        // Subscribe to room events
+        const eventSub = this.stompClient.subscribe('/topic/rooms/' + roomId + '/events', (message) => {
+            const event = JSON.parse(message.body);
+            this.displayEvent(event);
+        });
+        this.roomSubscriptions.push(eventSub);
+
+        // Subscribe to typing indicators
+        const typingSub = this.stompClient.subscribe('/topic/rooms/' + roomId + '/typing', (message) => {
+            const typing = JSON.parse(message.body);
+            this.displayTyping(typing);
+        });
+        this.roomSubscriptions.push(typingSub);
+    }
+
+    unsubscribeFromRoom(roomId) {
+        // Unsubscribe from all STOMP topics for this room
+        if (this.roomSubscriptions) {
+            this.roomSubscriptions.forEach(sub => {
+                if (sub) sub.unsubscribe();
+            });
+        }
+        this.roomSubscriptions = [];
+    }
+
+    // ... (init, setupEventListeners, etc. remain same)
+
+    // ...
+
+    displayMessage(messageData, animate = true) {
+        const messageArea = document.getElementById('chat-messages');
+        const messageElement = document.createElement('div');
+
+        const isOwnMessage = messageData.sender.username === this.currentUser.username;
+        messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
+
+        const date = messageData.timestamp ? new Date(messageData.timestamp) : new Date();
+        const timestamp = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Store timestamp for future checks
+        messageElement.dataset.timestamp = timestamp;
+
+        // Check last ACTUAL message time to see if we should show it
+        const messages = messageArea.querySelectorAll('.message');
+        const lastMessageElement = messages.length > 0 ? messages[messages.length - 1] : null;
+        const lastTime = lastMessageElement ? lastMessageElement.dataset.timestamp : null;
+
+        // Show time if different from last message, OR if there was no last message
+        const showTime = timestamp !== lastTime;
+
+        const initials = messageData.sender.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
+
+        messageElement.innerHTML = `
+                    <div class="message-avatar">${initials}</div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-sender">${this.escapeHtml(messageData.sender.displayName)}</span>
+                            ${showTime ? `<span class="message-time">${timestamp}</span>` : ''}
+                        </div>
+                        <div class="message-text">${this.escapeHtml(messageData.text)}</div>
+                    </div>
+                `;
+
+        if (animate) {
+            messageElement.style.opacity = '0';
+            messageElement.style.transform = 'translateY(20px)';
+        }
+
+        messageArea.appendChild(messageElement);
+
+        if (animate) {
+            requestAnimationFrame(() => {
+                messageElement.style.transition = 'all 0.3s ease';
+                messageElement.style.opacity = '1';
+                messageElement.style.transform = 'translateY(0)';
+            });
+        }
+
+        this.scrollToBottom();
     }
 
     init() {
@@ -241,9 +337,6 @@ class ChatApp {
         }
     }
 
-
-    // ... keep the rest of your ChatApp methods unchanged (connectWebSocket, subscribeToRoom, sendMessage, etc.)
-    // minor shim to match bindings
     // WebSocket Methods
     connectWebSocket() {
         const socket = new SockJS('/ws');
@@ -254,6 +347,11 @@ class ChatApp {
             (frame) => {
                 console.log('Connected: ' + frame);
                 this.onWebSocketConnected();
+                // Force Status to Online
+                this.updateUserStatus('ONLINE');
+                // Also update the UI select if it exists
+                const statusSelect = document.getElementById('status-select');
+                if (statusSelect) statusSelect.value = 'ONLINE';
             },
             (error) => {
                 console.error('WebSocket connection error:', error);
@@ -280,7 +378,6 @@ class ChatApp {
         this.showToast('Connected successfully!', 'success');
     }
 
-    // Room Management Methods
     async loadMyRooms() {
         try {
             const response = await fetch('/api/rooms/my-rooms', {
@@ -327,9 +424,17 @@ class ChatApp {
             roomElement.className = 'room-item';
             roomElement.onclick = (e) => this.selectRoom(room.id, room.name, room.roomType, e);
 
+            // Check if there is a local alias for this room
+            const alias = localStorage.getItem('room_alias_' + room.id);
+            const displayName = alias || room.name;
+
+            // Hide description for Direct Messages to avoid clutter
+            const descriptionHtml = (room.roomType === 'DIRECT_MESSAGE') ? '' :
+                (room.description ? `<div class="room-description">${this.escapeHtml(room.description)}</div>` : '');
+
             roomElement.innerHTML = `
                         <div class="room-item-header">
-                            <div class="room-name">${this.escapeHtml(room.name)}</div>
+                            <div class="room-name">${this.escapeHtml(displayName)}</div>
                             <div class="room-actions-btn">
                                 <button class="btn-icon" onclick="event.stopPropagation(); chatApp.leaveRoom(${room.id})" title="Leave Room">
                                     <i class="fas fa-sign-out-alt"></i>
@@ -337,7 +442,7 @@ class ChatApp {
                             </div>
                         </div>
                         <div class="room-type">${room.roomType.replace('_', ' ')}</div>
-                        ${room.description ? `<div class="room-description">${this.escapeHtml(room.description)}</div>` : ''}
+                        ${descriptionHtml}
                     `;
 
             roomList.appendChild(roomElement);
@@ -380,8 +485,14 @@ class ChatApp {
         }
 
         this.currentRoom = roomId;
+        this.currentRoomType = roomType; // Store room type
+
+        // Use alias if available
+        const alias = localStorage.getItem('room_alias_' + roomId);
+        const displayName = alias || roomName;
+
         const currentRoomNameEl = document.getElementById('current-room-name');
-        if (currentRoomNameEl) currentRoomNameEl.textContent = roomName;
+        if (currentRoomNameEl) currentRoomNameEl.textContent = displayName;
 
         // Show rename button
         const renameBtn = document.getElementById('rename-room-btn');
@@ -396,9 +507,6 @@ class ChatApp {
             const roomItemEl = e && (e.currentTarget || e.target) ? (e.currentTarget || e.target).closest('.room-item') : null;
             if (roomItemEl) {
                 roomItemEl.classList.add('active');
-            } else {
-                // fallback: find element by data attribute if you set one
-                // document.querySelector(`.room-item[data-room-id="${roomId}"]`)?.classList.add('active');
             }
         } catch (err) {
             // non-fatal
@@ -423,36 +531,6 @@ class ChatApp {
         }
     }
 
-    subscribeToRoom(roomId) {
-        // Subscribe to room messages
-        this.stompClient.subscribe('/topic/rooms/' + roomId, (message) => {
-            const messageData = JSON.parse(message.body);
-            this.displayMessage(messageData);
-        });
-
-        // Subscribe to room events
-        this.stompClient.subscribe('/topic/rooms/' + roomId + '/events', (message) => {
-            const event = JSON.parse(message.body);
-            this.displayEvent(event);
-        });
-
-        // Subscribe to typing indicators
-        this.stompClient.subscribe('/topic/rooms/' + roomId + '/typing', (message) => {
-            const typing = JSON.parse(message.body);
-            this.displayTyping(typing);
-        });
-
-        // Send join notification
-        this.stompClient.send('/app/rooms/' + roomId + '/join-notification', {}, JSON.stringify({}));
-    }
-
-    unsubscribeFromRoom(roomId) {
-        // Send leave notification
-        if (this.stompClient && this.stompClient.connected) {
-            this.stompClient.send('/app/rooms/' + roomId + '/leave-notification', {}, JSON.stringify({}));
-        }
-    }
-
     async loadRoomMembers(roomId) {
         try {
             const response = await fetch(`/api/rooms/${roomId}/members`, {
@@ -470,7 +548,6 @@ class ChatApp {
 
     async loadMessages(roomId) {
         try {
-            // Corrected URL to match MessageController
             const response = await fetch(`/api/messages/rooms/${roomId}`, {
                 headers: {
                     'Authorization': `Bearer ${this.token}`
@@ -526,30 +603,31 @@ class ChatApp {
         });
     }
 
-    // Replace the old displayMessages function in app.js with this one.
-
     displayMessages(messages) {
         const messageArea = document.getElementById('chat-messages');
         messageArea.innerHTML = '';
 
-        // Safety check to ensure we have a valid array to work with
         if (!messages || !Array.isArray(messages)) {
             console.error("displayMessages received invalid data:", messages);
             return;
         }
+
+        let lastMessageTime = null;
 
         messages.forEach(messageData => {
             const messageElement = document.createElement('div');
             const isOwnMessage = messageData.sender.username === this.currentUser.username;
             messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
 
-            // Ensure createdAt exists before creating a Date from it
-            const timestamp = messageData.createdAt ?
-                new Date(messageData.createdAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                }) :
-                '';
+            const date = messageData.createdAt ? new Date(messageData.createdAt) : new Date();
+            const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            // Store timestamp in dataset for future checks
+            messageElement.dataset.timestamp = timeString;
+
+            // Only show time if it's different from the last one (simplistic grouping)
+            const showTime = timeString !== lastMessageTime;
+            lastMessageTime = timeString;
 
             const senderDisplayName = messageData.sender ? this.escapeHtml(messageData.sender.displayName) : 'Unknown User';
             const messageText = messageData.text ? this.escapeHtml(messageData.text) : '...';
@@ -558,7 +636,7 @@ class ChatApp {
                         <div class="message-content">
                             <div class="message-header">
                                 <span class="message-sender">${senderDisplayName}</span>
-                                <span class="message-time">${timestamp}</span>
+                                ${showTime ? `<span class="message-time">${timeString}</span>` : ''}
                             </div>
                             <div class="message-text">${messageText}</div>
                         </div>
@@ -577,10 +655,16 @@ class ChatApp {
         const isOwnMessage = messageData.sender.username === this.currentUser.username;
         messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
 
-        const timestamp = new Date(messageData.timestamp).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        const date = messageData.timestamp ? new Date(messageData.timestamp) : new Date();
+        const timestamp = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Store timestamp for future checks
+        messageElement.dataset.timestamp = timestamp;
+
+        // Check last message time to see if we should show it
+        const lastMessageElement = messageArea.lastElementChild;
+        const lastTime = lastMessageElement ? lastMessageElement.dataset.timestamp : null;
+        const showTime = timestamp !== lastTime;
 
         const initials = messageData.sender.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
 
@@ -589,8 +673,7 @@ class ChatApp {
                     <div class="message-content">
                         <div class="message-header">
                             <span class="message-sender">${this.escapeHtml(messageData.sender.displayName)}</span>
-                            <span class="message-time">${timestamp}</span>
-                            <div class="message-status status-${messageData.sender.status.toLowerCase()}"></div>
+                            ${showTime ? `<span class="message-time">${timestamp}</span>` : ''}
                         </div>
                         <div class="message-text">${this.escapeHtml(messageData.text)}</div>
                     </div>
@@ -754,7 +837,7 @@ class ChatApp {
                 headers: {
                     'Authorization': 'Bearer ' + this.token,
                     'Content-Type': 'application/json'
-                }
+                },
             });
 
             if (response.ok) {
@@ -1039,6 +1122,16 @@ class ChatApp {
         const newName = document.getElementById('rename-room-input').value.trim();
         if (!newName || !this.currentRoom) return;
 
+        // If Direct Message, just rename locally (nickname)
+        if (this.currentRoomType === 'DIRECT_MESSAGE') {
+            localStorage.setItem('room_alias_' + this.currentRoom, newName);
+            document.getElementById('current-room-name').textContent = newName;
+            this.showToast('Chat nickname set successfully', 'success');
+            this.closeModals();
+            this.loadMyRooms(); // Refresh sidebar to show new name
+            return;
+        }
+
         try {
             const response = await fetch(`/api/rooms/${this.currentRoom}/rename`, {
                 method: 'PUT',
@@ -1065,14 +1158,9 @@ class ChatApp {
         }
     }
 
-
-}
+} // End of ChatApp class
 
 // Initialize app once and bind global functions for onclick HTML usage
-// Replace the entire 'DOMContentLoaded' block at the end of app.js with this.
-
-// Replace your entire 'DOMContentLoaded' block at the end of app.js with this.
-
 document.addEventListener('DOMContentLoaded', () => {
     // Make the app instance globally available for debugging
     window.chatApp = new ChatApp();

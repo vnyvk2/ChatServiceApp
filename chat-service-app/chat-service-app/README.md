@@ -237,8 +237,8 @@ mvn test
 1. Update `application.properties` for production:
 
 ```properties
-server.port=8080
-spring.datasource.url=jdbc:mysql://prod-db-host:3306/chatdb
+server.port=8081
+spring.datasource.url=jdbc:mysql://prod-db-host:3306/chatservice
 spring.jpa.hibernate.ddl-auto=validate
 app.jwtSecret=your-production-jwt-secret-key-here
 ```
