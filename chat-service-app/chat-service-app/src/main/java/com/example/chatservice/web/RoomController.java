@@ -269,4 +269,52 @@ public class RoomController {
                     (username != null && !username.trim().isEmpty());
         }
     }
+
+    @PutMapping("/{roomId}/rename")
+    public ResponseEntity<?> renameRoom(@PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetails principal,
+            @RequestBody RenameRoomRequest request) {
+        User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+
+        // Check if user is admin or creator (assuming only they can rename, or anyone?
+        // User said "we should be able to chnge the room name". I'll allow members for
+        // now or check admin)
+        // For simplicity and matching typical requirements, usually only
+        // admins/creators update room details.
+        // Checking if user is admin of the room:
+        if (!chatRoomService.isUserRoomAdmin(user.getId(), roomId) &&
+                !chatRoomService.findRoomById(roomId).map(r -> r.getCreatedBy().getId().equals(user.getId()))
+                        .orElse(false)) {
+            // For DM, maybe allow any participant? user asked "for the dm chats i should be
+            // able to change the name ... for room to we should be able to chnge".
+            // If it is DM, usually name is auto-generated, but user wants to change it.
+            // If it's a DM, any member can "rename" it locally? Or globally?
+            // If I change it globally, the other user sees it too.
+            // Let's assume global rename for now.
+
+            // If it is a DM room, check if user is member
+            ChatRoom room = chatRoomService.findRoomById(roomId).orElse(null);
+            if (room != null && room.getRoomType() == ChatRoom.RoomType.DIRECT_MESSAGE) {
+                if (!chatRoomService.isUserMemberOfRoom(user.getId(), roomId)) {
+                    return ResponseEntity.status(403).body(Map.of("error", "Not a member of this chat"));
+                }
+            } else {
+                return ResponseEntity.status(403).body(Map.of("error", "Only admins can rename group rooms"));
+            }
+        }
+
+        try {
+            ChatRoom updatedRoom = chatRoomService.updateRoom(roomId, request.name(), null,
+                    chatRoomService.findRoomById(roomId).get().isPrivate());
+            return ResponseEntity.ok(Map.of(
+                    "id", updatedRoom.getId(),
+                    "name", updatedRoom.getName(),
+                    "message", "Room renamed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to rename room"));
+        }
+    }
+
+    public record RenameRoomRequest(String name) {
+    }
 }

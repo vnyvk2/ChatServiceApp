@@ -54,50 +54,109 @@
   <div id="chat-section" style="display:none;">
     <div class="sidebar">
       <div class="sidebar-header">
-        <div id="current-user" class="user-name"></div>
-        <div class="header-actions">
-          <select id="status-select">
-            <option value="online">🟢 Online</option>
-            <option value="away">🟡 Away</option>
-            <option value="busy">🔴 Busy</option>
-          </select>
-          <button id="logout-btn" class="btn-logout" title="Logout">
-            <i class="fas fa-sign-out-alt"></i>
-          </button>
-        </div>
+        <button id="profile-btn" class="profile-btn"
+          style="display: flex; align-items: center; gap: 0.75rem; text-align: left; width: 100%;">
+          <div class="avatar"><i class="fas fa-user"></i></div>
+          <div class="user-info">
+            <span id="current-user" class="user-name">Loading...</span>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">My Profile</div>
+          </div>
+          <i class="fas fa-chevron-right" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+        </button>
       </div>
-      <div class="sidebar-actions">
-        <button id="show-create-room-btn"><i class="fas fa-plus"></i> Create Room</button>
-        <button id="show-join-room-btn"><i class="fas fa-search"></i> Join Room</button>
-        <button id="show-dm-btn"><i class="fas fa-user-plus"></i> New DM</button>
+      <div style="padding: 0 1.25rem 1rem 1.25rem; border-bottom: 1px solid var(--border-light);">
+        <select id="status-select" style="width: 100%; padding: 0.4rem; font-size: 0.85rem;">
+          <option value="ONLINE">🟢 Online</option>
+          <option value="AWAY">🟡 Away</option>
+          <option value="OFFLINE">⚫ Offline</option>
+        </select>
       </div>
-      <div class="room-list-container">
-        <h4>My Rooms</h4>
-        <div id="room-list"></div>
+
+      <h3>Menu</h3>
+      <div class="action-buttons">
+        <button class="btn-ghost btn-ghost-primary" id="show-create-room-btn"><i class="fas fa-plus-circle"></i>
+          Create Room</button>
+        <button class="btn-ghost" id="show-join-room-btn"><i class="fas fa-door-open"></i> Join Room</button>
+        <button class="btn-ghost" id="show-dm-btn"><i class="fas fa-comment-alt"></i> Direct Message</button>
       </div>
+
+      <h3>My Rooms</h3>
+      <div id="room-list"></div>
     </div>
 
     <div class="main-content">
       <div class="chat-header">
-        <h2 id="current-room-name">Select a room</h2>
-        <div id="room-members-count"></div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <h2 id="current-room-name">Select a room</h2>
+          <button id="rename-room-btn" class="edit-btn hidden" title="Rename Room"><i class="fas fa-pen"></i></button>
+        </div>
+        <div class="header-actions">
+          <!-- Additional header actions if needed -->
+        </div>
       </div>
+
       <div id="chat-messages">
         <div class="welcome-message">
           <i class="fas fa-comments"></i>
-          <h3>Welcome to ChatService!</h3>
-          <p>Select a room from the sidebar to start chatting.</p>
+          <h3>Welcome to ChatService</h3>
+          <p>Select a room or start a conversation</p>
         </div>
       </div>
-      <div id="typing-indicator"></div>
+      <div id="typing-indicator" class="hidden"></div>
       <div id="chat-input-area" class="hidden">
-        <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
-        <button id="send-btn" title="Send Message"><i class="fas fa-paper-plane"></i></button>
+        <input type="text" id="message-input" placeholder="Type a message...">
+        <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
       </div>
     </div>
+
+    <!-- Members Panel (Hidden by default) -->
+    <div id="members-panel" class="sidebar hidden"
+      style="border-left: 1px solid var(--border-light); border-right: none;">
+      <h3>Room Members (<span id="room-members-count">0</span>)</h3>
+      <div id="online-users"></div>
+    </div>
   </div>
+
   <!-- ================= MODALS ================= -->
   <div id="modal-overlay" class="hidden">
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal hidden">
+      <div class="profile-avatar-large"><i class="fas fa-user"></i></div>
+      <h3 style="text-align: center;">My Profile</h3>
+
+      <div class="modal-section">
+        <label for="profile-username">Username</label>
+        <input type="text" id="profile-username" placeholder="Username">
+      </div>
+      <div class="modal-section">
+        <label for="profile-phone">Phone Number</label>
+        <input type="text" id="profile-phone" placeholder="Phone Number">
+      </div>
+      <div class="modal-section">
+        <label for="profile-email">Email (Optional)</label>
+        <input type="email" id="profile-email" placeholder="Email">
+      </div>
+
+      <div class="modal-actions">
+        <button id="save-profile-btn" class="btn-confirm">Save Changes</button>
+        <button class="cancel-modal-btn btn-cancel">Close</button>
+      </div>
+
+      <div class="logout-container">
+        <button id="logout-btn" class="btn-danger-ghost"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      </div>
+    </div>
+
+    <!-- Rename Room Modal -->
+    <div id="rename-room-modal" class="modal hidden">
+      <h3>Rename Room</h3>
+      <input type="text" id="rename-room-input" placeholder="New Room Name">
+      <div class="modal-actions">
+        <button id="confirm-rename-btn" class="btn-confirm">Rename</button>
+        <button class="cancel-modal-btn btn-cancel">Cancel</button>
+      </div>
+    </div>
 
     <div id="create-room-modal" class="modal hidden">
       <h3>Create New Room</h3>
@@ -126,7 +185,7 @@
     <div id="direct-message-modal" class="modal hidden">
       <h3>New Direct Message</h3>
       <input id="dm-phone" placeholder="Enter phone number">
-      <p>OR</p>
+      <p style="text-align:center; margin: 0.5rem 0;">OR</p>
       <input id="dm-username" placeholder="Enter username">
       <button id="start-dm-btn">Start Chat</button>
       <button class="cancel-modal-btn">Cancel</button>

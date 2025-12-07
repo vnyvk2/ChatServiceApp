@@ -23,7 +23,7 @@ public class UserController {
 
     @GetMapping("/search")
     public ResponseEntity<?> searchUsers(@RequestParam String query,
-                                         @AuthenticationPrincipal UserDetails principal) {
+            @AuthenticationPrincipal UserDetails principal) {
         // Search by username or phone number
         List<Map<String, Object>> results = new ArrayList<>();
 
@@ -34,8 +34,7 @@ public class UserController {
                         "username", user.getUsername(),
                         "displayName", user.getDisplayName(),
                         "status", user.getStatus(),
-                        "searchType", "username"
-                ));
+                        "searchType", "username"));
             }
         });
 
@@ -48,12 +47,34 @@ public class UserController {
                             "displayName", user.getDisplayName(),
                             "phoneNumber", user.getPhoneNumber(),
                             "status", user.getStatus(),
-                            "searchType", "phone"
-                    ));
+                            "searchType", "phone"));
                 }
             });
         }
 
         return ResponseEntity.ok(results);
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@AuthenticationPrincipal UserDetails principal,
+            @RequestBody UpdateProfileRequest request) {
+        User user = userService.findByUsername(principal.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        try {
+            User updatedUser = userService.updateUserProfile(user.getId(), request.username(), request.phoneNumber(),
+                    request.email());
+            return ResponseEntity.ok(Map.of(
+                    "username", updatedUser.getUsername(),
+                    "displayName", updatedUser.getDisplayName(),
+                    "email", updatedUser.getEmail(),
+                    "phoneNumber", updatedUser.getPhoneNumber() != null ? updatedUser.getPhoneNumber() : "",
+                    "status", updatedUser.getStatus()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    public record UpdateProfileRequest(String username, String phoneNumber, String email) {
     }
 }

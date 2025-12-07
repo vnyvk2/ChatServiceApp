@@ -32,6 +32,18 @@ class ChatApp {
             }
         });
 
+        // Profile logic
+        document.getElementById('profile-btn')?.addEventListener('click', () => this.showProfile());
+        document.getElementById('save-profile-btn')?.addEventListener('click', () => this.saveProfile());
+
+        // Rename logic
+        document.getElementById('rename-room-btn')?.addEventListener('click', () => this.showRenameRoom());
+        document.getElementById('confirm-rename-btn')?.addEventListener('click', () => this.renameRoom());
+
+        // Cancel buttons for new modals
+        document.querySelectorAll('.cancel-modal-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.closeModals());
+        });
     }
 
     checkExistingSession() {
@@ -370,6 +382,11 @@ class ChatApp {
         this.currentRoom = roomId;
         const currentRoomNameEl = document.getElementById('current-room-name');
         if (currentRoomNameEl) currentRoomNameEl.textContent = roomName;
+
+        // Show rename button
+        const renameBtn = document.getElementById('rename-room-btn');
+        if (renameBtn) renameBtn.classList.remove('hidden');
+
         document.getElementById('chat-input-area').classList.remove('hidden');
 
         // Update active room styling
@@ -963,6 +980,88 @@ class ChatApp {
         } catch (error) {
             console.error('Error starting direct message:', error);
             this.showToast('Failed to start direct message', 'error');
+        }
+    }
+
+    // Profile & Rename Methods
+    showProfile() {
+        document.getElementById('profile-username').value = this.currentUser.username || '';
+        document.getElementById('profile-phone').value = this.currentUser.phoneNumber || '';
+        document.getElementById('profile-email').value = this.currentUser.email || '';
+
+        document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById('profile-modal').classList.remove('hidden');
+    }
+
+    async saveProfile() {
+        const username = document.getElementById('profile-username').value.trim();
+        const phoneNumber = document.getElementById('profile-phone').value.trim();
+        const email = document.getElementById('profile-email').value.trim();
+
+        try {
+            const response = await fetch('/api/users/profile', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + this.token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, phoneNumber, email })
+            });
+
+            if (response.ok) {
+                const updatedUser = await response.json();
+                this.currentUser = { ...this.currentUser, ...updatedUser };
+                localStorage.setItem('chatUser', JSON.stringify(this.currentUser));
+
+                // Update UI
+                document.getElementById('current-user').textContent = this.currentUser.displayName || this.currentUser.username;
+                this.showToast('Profile updated successfully', 'success');
+                this.closeModals();
+            } else {
+                const error = await response.json();
+                this.showToast(error.error || 'Failed to update profile', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            this.showToast('Network error', 'error');
+        }
+    }
+
+    showRenameRoom() {
+        if (!this.currentRoom) return;
+        const currentName = document.getElementById('current-room-name').textContent;
+        document.getElementById('rename-room-input').value = currentName;
+        document.getElementById('modal-overlay').classList.remove('hidden');
+        document.getElementById('rename-room-modal').classList.remove('hidden');
+    }
+
+    async renameRoom() {
+        const newName = document.getElementById('rename-room-input').value.trim();
+        if (!newName || !this.currentRoom) return;
+
+        try {
+            const response = await fetch(`/api/rooms/${this.currentRoom}/rename`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + this.token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: newName })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('current-room-name').textContent = data.name;
+                this.showToast('Room renamed', 'success');
+                this.closeModals();
+                this.loadMyRooms(); // Refresh list
+            } else {
+                const error = await response.json();
+                this.showToast(error.error || 'Failed to rename room', 'error');
+            }
+        } catch (error) {
+            console.error('Renaming error:', error);
+            this.showToast('Network error', 'error');
         }
     }
 

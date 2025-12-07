@@ -143,4 +143,35 @@ public class UserService {
             userRepository.save(user);
         }
     }
+
+    @Transactional
+    public User updateUserProfile(Long userId, String username, String phoneNumber, String email) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (username != null && !username.isBlank() && !user.getUsername().equals(username)) {
+            if (userRepository.existsByUsername(username)) {
+                throw new RuntimeException("Username already taken");
+            }
+            user.setUsername(username);
+            user.setDisplayName(username); // updating display name as well for consistency, or keep separate? distinct
+                                           // is better but user asked for username. I'll stick to username.
+        }
+
+        if (phoneNumber != null && !phoneNumber.isBlank() && !phoneNumber.equals(user.getPhoneNumber())) {
+            if (userRepository.existsByPhoneNumber(phoneNumber)) {
+                throw new RuntimeException("Phone number already taken");
+            }
+            user.setPhoneNumber(phoneNumber);
+        }
+
+        if (email != null && !email.isBlank() && !email.equals(user.getEmail())) {
+            if (userRepository.existsByEmail(email)) {
+                throw new RuntimeException("Email already taken");
+            }
+            user.setEmail(email);
+        }
+
+        return userRepository.save(user);
+    }
 }

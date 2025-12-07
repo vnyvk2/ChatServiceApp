@@ -485,17 +485,26 @@ body.auth-page,
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 9999;
 }
 
 .modal {
+    position: fixed;
+    /* Changed from default static/relative */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* Center it explicitly */
     background: white;
     padding: 2rem;
     border-radius: var(--radius-lg);
-    width: 100%;
+    width: 90%;
+    /* Responsive width */
     max-width: 420px;
     box-shadow: var(--shadow-lg);
     animation: scaleIn 0.2s ease;
+    z-index: 10000;
+    /* Higher than overlay */
 }
 
 @keyframes scaleIn {
@@ -567,4 +576,82 @@ body.auth-page,
 
 ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+}
+
+/* ==========================================================================
+   4. Profile & Modals Extras
+   ========================================================================== */
+.profile-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.2s;
+}
+
+.profile-btn:hover {
+    transform: scale(1.05);
+}
+
+.edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0.25rem;
+    margin-left: 0.5rem;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.edit-btn:hover {
+    color: var(--primary);
+}
+
+.profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+}
+
+.modal-section {
+    margin-bottom: 1rem;
+}
+
+.modal-section label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.logout-container {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light);
+}
+
+.btn-danger-ghost {
+    width: 100%;
+    padding: 0.75rem;
+    background: #fee2e2;
+    color: #ef4444;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-danger-ghost:hover {
+    background: #fecaca;
+    color: #dc2626;
 }
