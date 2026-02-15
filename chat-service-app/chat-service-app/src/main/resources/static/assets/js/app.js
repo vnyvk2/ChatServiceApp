@@ -281,6 +281,13 @@ class ChatApp {
 
     // WebSocket Methods
     connectWebSocket() {
+        if (this.stompClient && this.stompClient.connected) {
+            return; // Already connected
+        }
+        if (this.stompClient) {
+            try { this.stompClient.disconnect(); } catch (e) { /* ignore */ }
+        }
+
         const socket = new SockJS('/ws');
         this.stompClient = Stomp.over(socket);
 
