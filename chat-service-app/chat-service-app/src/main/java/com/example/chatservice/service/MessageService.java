@@ -12,7 +12,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,8 +34,7 @@ public class MessageService {
         this.cryptoService = cryptoService;
     }
 
-    @Transactional
-    public Message saveEncrypted(Long roomId, String senderUsername, String content) {
+    public Message saveEncrypted(String roomId, String senderUsername, String content) {
         System.out.println("MessageService.saveEncrypted called for room " + roomId + " by " + senderUsername);
         User sender = userRepository.findByUsername(senderUsername)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -57,53 +55,45 @@ public class MessageService {
         return messageRepository.save(message);
     }
 
-    @Transactional(readOnly = true)
-    public List<Message> getRecentMessages(Long roomId, int limit) {
+    public List<Message> getRecentMessages(String roomId, int limit) {
         Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
-        return messageRepository.findByRoom_IdOrderByCreatedAtDesc(roomId, pageable);
+        return messageRepository.findByRoomIdOrderByCreatedAtDesc(roomId, pageable);
     }
 
-    @Transactional(readOnly = true)
-    public List<Message> getAllMessagesInRoom(Long roomId) {
-        return messageRepository.findByRoom_IdOrderByCreatedAtAsc(roomId);
+    public List<Message> getAllMessagesInRoom(String roomId) {
+        return messageRepository.findByRoomIdOrderByCreatedAtAsc(roomId);
     }
 
-    @Transactional(readOnly = true)
     public String decryptMessage(Message message) {
         return cryptoService.decrypt(message.getEncryptedContent());
     }
 
-    @Transactional(readOnly = true)
-    public Optional<Message> findById(Long messageId) {
+    public Optional<Message> findById(String messageId) {
         return messageRepository.findById(messageId);
     }
 
-    @Transactional
-    public void deleteMessage(Long messageId) {
+    public void deleteMessage(String messageId) {
         messageRepository.deleteById(messageId);
     }
 
-    @Transactional(readOnly = true)
-    public long getMessageCountInRoom(Long roomId) {
-        return messageRepository.countByRoom_Id(roomId);
+    public long getMessageCountInRoom(String roomId) {
+        return messageRepository.countByRoomId(roomId);
     }
 
-    // --------- NEW methods required by controller ---------
+    // --------- Pagination method ---------
 
     /**
      * Returns a page of messages for a room. Sorted by createdAt descending by
      * default.
      */
-    @Transactional(readOnly = true)
-    public Page<Message> getMessages(Long roomId, int page, int size) {
+    public Page<Message> getMessages(String roomId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return messageRepository.findByRoom_Id(roomId, pageable);
+        return messageRepository.findByRoomId(roomId, pageable);
     }
 
     /**
      * Decrypt raw cipher text (used by controller /decrypt endpoint).
      */
-    @Transactional(readOnly = true)
     public String decrypt(String cipher) {
         try {
             return cryptoService.decrypt(cipher);

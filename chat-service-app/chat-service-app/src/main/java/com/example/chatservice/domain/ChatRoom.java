@@ -1,52 +1,44 @@
 package com.example.chatservice.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Entity
-@Table(name = "chat_rooms", indexes = {
-        @Index(name = "idx_chat_rooms_name", columnList = "name"),
-        @Index(name = "idx_chat_rooms_type", columnList = "roomType")
-})
+@Document(collection = "chat_rooms")
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class ChatRoom {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @EqualsAndHashCode.Include
-    private Long id;
+    private String id;
 
-    @Column(nullable = false, length = 100)
+    @Indexed
     private String name;
 
-    @Column(length = 500)
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RoomType roomType = RoomType.GROUP_CHAT;
+    @Indexed
+    private ChatRoom.RoomType roomType = RoomType.GROUP_CHAT;
 
-    @Column(nullable = false)
     private boolean isPrivate = false;
 
-    @ManyToOne
-    @JoinColumn(name = "created_by")
+    @DBRef
     @JsonIgnoreProperties({ "passwordHash", "roles", "email", "lastSeenAt", "createdAt", "updatedAt" })
     private User createdBy;
 
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @CreatedDate
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(nullable = false)
+    @LastModifiedDate
     private Instant updatedAt;
 
     public enum RoomType {
@@ -55,11 +47,11 @@ public class ChatRoom {
         BROADCAST
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 

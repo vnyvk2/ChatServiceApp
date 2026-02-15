@@ -9,6 +9,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,6 +26,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
+@Tag(name = "Authentication Management", description = "Endpoints for user registration, login, and logout")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -33,10 +36,10 @@ public class AuthController {
     private final UserService userService;
 
     public AuthController(UserRepository userRepository,
-                          PasswordEncoder passwordEncoder,
-                          AuthenticationManager authenticationManager,
-                          JwtService jwtService,
-                          UserService userService) {
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authenticationManager,
+            JwtService jwtService,
+            UserService userService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
@@ -45,6 +48,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Register a new user", description = "Creates a new user account and returns a JWT token.")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
             if (userRepository.existsByUsername(request.username())) {
@@ -61,8 +65,9 @@ public class AuthController {
             User user = new User();
             user.setUsername(request.username());
             user.setEmail(request.email());
-            user.setPhoneNumber(request.phoneNumber() != null && !request.phoneNumber().trim().isEmpty() ?
-                    request.phoneNumber().trim() : null);
+            user.setPhoneNumber(request.phoneNumber() != null && !request.phoneNumber().trim().isEmpty()
+                    ? request.phoneNumber().trim()
+                    : null);
             user.setDisplayName(request.displayName());
             user.setPasswordHash(passwordEncoder.encode(request.password()));
             user.setStatus(User.UserStatus.OFFLINE);
@@ -78,8 +83,7 @@ public class AuthController {
                     "displayName", user.getDisplayName(),
                     "email", user.getEmail(),
                     "phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : "",
-                    "status", user.getStatus().toString()
-            ));
+                    "status", user.getStatus().toString()));
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -88,11 +92,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "User login", description = "Authenticates user credentials and returns a JWT token.")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.username(), request.password())
-            );
+                    new UsernamePasswordAuthenticationToken(request.username(), request.password()));
 
             User user = userRepository.findByUsername(request.username()).orElseThrow();
             userService.updateUserStatus(user.getId(), User.UserStatus.ONLINE);
@@ -107,8 +111,7 @@ public class AuthController {
                     "displayName", user.getDisplayName(),
                     "email", user.getEmail(),
                     "phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : "",
-                    "status", User.UserStatus.ONLINE.toString()
-            ));
+                    "status", User.UserStatus.ONLINE.toString()));
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -117,6 +120,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @Operation(summary = "User logout", description = "Logs out the current user and updates their status to OFFLINE.")
     public ResponseEntity<?> logout(@AuthenticationPrincipal UserDetails userDetails) {
         try {
             if (userDetails != null) {
@@ -130,6 +134,7 @@ public class AuthController {
     }
 
     @GetMapping("/search-by-phone")
+    @Operation(summary = "Search user by phone number", description = "Retrieves user details based on the provided phone number.")
     public ResponseEntity<?> searchByPhone(@RequestParam String phoneNumber) {
         try {
             Optional<User> user = userRepository.findByPhoneNumber(phoneNumber);
@@ -140,8 +145,7 @@ public class AuthController {
                         "username", foundUser.getUsername(),
                         "displayName", foundUser.getDisplayName(),
                         "phoneNumber", foundUser.getPhoneNumber(),
-                        "status", foundUser.getStatus().toString()
-                ));
+                        "status", foundUser.getStatus().toString()));
             }
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
@@ -154,11 +158,11 @@ public class AuthController {
             @NotBlank @Email String email,
             @Pattern(regexp = "^$|^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format") String phoneNumber,
             @NotBlank @Size(min = 6, max = 100) String password,
-            @NotBlank @Size(min = 1, max = 100) String displayName
-    ) {}
+            @NotBlank @Size(min = 1, max = 100) String displayName) {
+    }
 
     public record LoginRequest(
             @NotBlank String username,
-            @NotBlank String password
-    ) {}
+            @NotBlank String password) {
+    }
 }

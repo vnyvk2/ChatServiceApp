@@ -1,91 +1,97 @@
 package com.example.chatservice.domain;
 
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Entity
-@Table(name = "messages", indexes = {
-        @Index(name = "idx_messages_room_created", columnList = "room_id, createdAt"),
-        @Index(name = "idx_messages_sender", columnList = "sender_id")
-})
+@Document(collection = "messages")
+@CompoundIndex(name = "idx_room_created", def = "{'roomId': 1, 'createdAt': -1}")
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Message {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @EqualsAndHashCode.Include
-    private Long id;
+    private String id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "room_id", nullable = false)
+    @DBRef
     private ChatRoom room;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "sender_id", nullable = false)
+    @Indexed
+    private String roomId;
+
+    @DBRef
     private User sender;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Indexed
+    private String senderId;
+
     private String encryptedContent;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private MessageType messageType = MessageType.TEXT;
 
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @CreatedDate
     private Instant createdAt;
 
     public enum MessageType {
         TEXT, IMAGE, FILE, SYSTEM
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public ChatRoom getRoom() {
         return room;
     }
 
+    public void setRoom(ChatRoom room) {
+        this.room = room;
+        if (room != null) {
+            this.roomId = room.getId();
+        }
+    }
+
     public User getSender() {
         return sender;
+    }
+
+    public void setSender(User sender) {
+        this.sender = sender;
+        if (sender != null) {
+            this.senderId = sender.getId();
+        }
     }
 
     public String getEncryptedContent() {
         return encryptedContent;
     }
 
-    public MessageType getMessageType() {
-        return messageType;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setRoom(ChatRoom room) {
-        this.room = room;
-    }
-
-    public void setSender(User sender) {
-        this.sender = sender;
-    }
-
     public void setEncryptedContent(String encryptedContent) {
         this.encryptedContent = encryptedContent;
     }
 
+    public MessageType getMessageType() {
+        return messageType;
+    }
+
     public void setMessageType(MessageType messageType) {
         this.messageType = messageType;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 
     public void setCreatedAt(Instant createdAt) {

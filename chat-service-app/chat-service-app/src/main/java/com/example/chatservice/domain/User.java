@@ -1,66 +1,53 @@
 package com.example.chatservice.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
-@Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_users_username", columnList = "username", unique = true),
-        @Index(name = "idx_users_email", columnList = "email", unique = true),
-        @Index(name = "idx_users_phone", columnList = "phoneNumber", unique = true)
-})
+@Document(collection = "users")
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @EqualsAndHashCode.Include
-    private Long id;
+    private String id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Indexed(unique = true)
     private String username;
 
-    @Column(nullable = false, unique = true, length = 255)
+    @Indexed(unique = true)
     private String email;
 
-    @Column(unique = true, length = 20)
+    @Indexed(unique = true, sparse = true)
     private String phoneNumber;
 
     @JsonIgnore
-    @Column(nullable = false, length = 255)
     private String passwordHash;
 
-    @Column(nullable = false, length = 100)
     private String displayName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private UserStatus status = UserStatus.OFFLINE;
 
-    @Column
     private Instant lastSeenAt;
 
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @CreatedDate
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(nullable = false)
+    @LastModifiedDate
     private Instant updatedAt;
 
     @JsonIgnore
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new HashSet<>();
+    private Set<String> roles = new HashSet<>();
 
     public enum UserStatus {
         ONLINE, OFFLINE, AWAY
@@ -79,11 +66,11 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -135,11 +122,11 @@ public class User {
         this.lastSeenAt = lastSeenAt;
     }
 
-    public Set<Role> getRoles() {
+    public Set<String> getRoles() {
         return roles;
     }
 
-    public void setRoles(Set<Role> roles) {
+    public void setRoles(Set<String> roles) {
         this.roles = roles;
     }
 }

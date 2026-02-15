@@ -1,28 +1,23 @@
 package com.example.chatservice.repository;
 
 import com.example.chatservice.domain.RoomMembership;
-import com.example.chatservice.domain.RoomMembership.RoomMembershipId;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface RoomMembershipRepository extends JpaRepository<RoomMembership, RoomMembershipId> {
-    List<RoomMembership> findByUser_Id(Long userId);
-    List<RoomMembership> findByRoom_Id(Long roomId);
-    boolean existsByRoom_IdAndUser_Id(Long roomId, Long userId);
+public interface RoomMembershipRepository extends MongoRepository<RoomMembership, String> {
+    List<RoomMembership> findByUserId(String userId);
 
-    // Add these missing methods for enhanced functionality
-    @Query("SELECT rm FROM RoomMembership rm WHERE rm.id.roomId = :roomId AND rm.id.userId = :userId")
-    Optional<RoomMembership> findByRoomIdAndUserId(@Param("roomId") Long roomId, @Param("userId") Long userId);
+    List<RoomMembership> findByRoomId(String roomId);
 
-    @Query("SELECT rm FROM RoomMembership rm WHERE rm.id.userId = :userId AND rm.isActive = true")
-    List<RoomMembership> findByUserIdAndIsActiveTrue(@Param("userId") Long userId);
+    boolean existsByRoomIdAndUserId(String roomId, String userId);
 
-    @Query("SELECT rm FROM RoomMembership rm WHERE rm.id.roomId = :roomId AND rm.isActive = true")
-    List<RoomMembership> findByRoomIdAndIsActiveTrue(@Param("roomId") Long roomId);
+    Optional<RoomMembership> findByRoomIdAndUserId(String roomId, String userId);
+
+    List<RoomMembership> findByUserIdAndIsActiveTrue(String userId);
+
+    List<RoomMembership> findByRoomIdAndIsActiveTrue(String roomId);
 }

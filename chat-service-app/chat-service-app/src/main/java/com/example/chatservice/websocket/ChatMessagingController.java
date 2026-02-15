@@ -37,7 +37,7 @@ public class ChatMessagingController {
         }
 
         @MessageMapping("/rooms/{roomId}/send")
-        public void sendToRoom(@DestinationVariable Long roomId,
+        public void sendToRoom(@DestinationVariable String roomId,
                         @Payload MessagePayload payload,
                         Authentication authentication) {
                 System.out.println("📩 Message received for room: " + roomId);
@@ -120,7 +120,7 @@ public class ChatMessagingController {
         }
 
         @MessageMapping("/rooms/{roomId}/typing")
-        public void userTyping(@DestinationVariable Long roomId,
+        public void userTyping(@DestinationVariable String roomId,
                         @Payload TypingPayload payload,
                         Authentication authentication) {
                 String username = authentication.getName();
@@ -140,7 +140,7 @@ public class ChatMessagingController {
         }
 
         @MessageMapping("/rooms/{roomId}/join-notification")
-        public void handleJoinNotification(@DestinationVariable Long roomId,
+        public void handleJoinNotification(@DestinationVariable String roomId,
                         Authentication authentication) {
                 String username = authentication.getName();
                 User user = userRepository.findByUsername(username).orElseThrow();
@@ -158,7 +158,7 @@ public class ChatMessagingController {
         }
 
         @MessageMapping("/rooms/{roomId}/leave-notification")
-        public void handleLeaveNotification(@DestinationVariable Long roomId,
+        public void handleLeaveNotification(@DestinationVariable String roomId,
                         Authentication authentication) {
                 String username = authentication.getName();
                 User user = userRepository.findByUsername(username).orElseThrow();

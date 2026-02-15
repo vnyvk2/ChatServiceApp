@@ -5,10 +5,10 @@ import com.example.chatservice.domain.User;
 import java.time.Instant;
 
 public record MessageDto(
-        Long id,
+        String id,
         SenderDto sender,
         String text, // Decrypted text
-        Instant createdAt
-) {
-    public record SenderDto(String username, String displayName, User.UserStatus status) {}
+        Instant createdAt) {
+    public record SenderDto(String username, String displayName, User.UserStatus status) {
+    }
 }

@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,7 +29,6 @@ public class UserService {
     }
 
     // ---- New: register and authenticate ----
-    @Transactional
     public User registerUser(String username, String rawPassword, String displayName, String email,
             String phoneNumber) {
         if (userRepository.existsByUsername(username)) {
@@ -53,7 +51,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
     public User authenticate(String username, String rawPassword) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Invalid username or password"));
@@ -65,9 +62,8 @@ public class UserService {
         return user;
     }
 
-    // ---- Existing methods you had (kept/merged) ----
-    @Transactional
-    public void updateUserStatus(@NonNull Long userId, User.UserStatus status) {
+    // ---- Existing methods ----
+    public void updateUserStatus(@NonNull String userId, User.UserStatus status) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
@@ -89,53 +85,47 @@ public class UserService {
         }
     }
 
-    @Transactional(readOnly = true)
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
 
-    @Transactional(readOnly = true)
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
 
-    @Transactional(readOnly = true)
     public Optional<User> findByPhoneNumber(String phoneNumber) {
         return userRepository.findByPhoneNumber(phoneNumber);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<User> findById(@NonNull Long id) {
+    public Optional<User> findById(@NonNull String id) {
         return userRepository.findById(id);
     }
 
-    @Transactional(readOnly = true)
     public List<User> getOnlineUsers() {
-        return userRepository.findOnlineUsers();
+        return userRepository.findByStatus(User.UserStatus.ONLINE);
     }
 
-    @Transactional
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
     public User saveUser(@NonNull User user) {
         return userRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
     public boolean existsByUsername(String username) {
         return userRepository.existsByUsername(username);
     }
 
-    @Transactional(readOnly = true)
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
     }
 
-    @Transactional(readOnly = true)
     public boolean existsByPhoneNumber(String phoneNumber) {
         return userRepository.existsByPhoneNumber(phoneNumber);
     }
 
-    @Transactional
-    public void updateLastSeen(@NonNull Long userId) {
+    public void updateLastSeen(@NonNull String userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
@@ -144,8 +134,7 @@ public class UserService {
         }
     }
 
-    @Transactional
-    public User updateUserProfile(Long userId, String username, String phoneNumber, String email) {
+    public User updateUserProfile(String userId, String username, String phoneNumber, String email) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -154,8 +143,7 @@ public class UserService {
                 throw new RuntimeException("Username already taken");
             }
             user.setUsername(username);
-            user.setDisplayName(username); // updating display name as well for consistency, or keep separate? distinct
-                                           // is better but user asked for username. I'll stick to username.
+            user.setDisplayName(username);
         }
 
         if (phoneNumber != null && !phoneNumber.isBlank() && !phoneNumber.equals(user.getPhoneNumber())) {
@@ -173,5 +161,28 @@ public class UserService {
         }
 
         return userRepository.save(user);
+    }
+
+    /**
+     * Find a user by ID or username. Tries ID first, then username.
+     */
+    public Optional<User> findByIdOrUsername(String identifier) {
+        Optional<User> user = userRepository.findById(identifier);
+        if (user.isPresent()) {
+            return user;
+        }
+        return userRepository.findByUsername(identifier);
+    }
+
+    /**
+     * Delete a user by ID or username.
+     */
+    public void deleteByIdOrUsername(String identifier) {
+        Optional<User> user = findByIdOrUsername(identifier);
+        if (user.isPresent()) {
+            userRepository.delete(user.get());
+        } else {
+            throw new RuntimeException("User not found with identifier: " + identifier);
+        }
     }
 }

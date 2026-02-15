@@ -118,79 +118,77 @@
   </div>
 
   <!-- ================= MODALS ================= -->
-  <div id="modal-overlay" class="hidden">
+  <div id="modal-overlay" class="hidden"></div>
 
-    <!-- Profile Modal -->
-    <div id="profile-modal" class="modal hidden">
-      <div class="profile-avatar-large"><i class="fas fa-user"></i></div>
-      <h3 style="text-align: center;">My Profile</h3>
+  <!-- Profile Modal -->
+  <div id="profile-modal" class="modal hidden">
+    <div class="profile-avatar-large"><i class="fas fa-user"></i></div>
+    <h3 style="text-align: center;">My Profile</h3>
 
-      <div class="modal-section">
-        <label for="profile-username">Username</label>
-        <input type="text" id="profile-username" placeholder="Username">
-      </div>
-      <div class="modal-section">
-        <label for="profile-phone">Phone Number</label>
-        <input type="text" id="profile-phone" placeholder="Phone Number">
-      </div>
-      <div class="modal-section">
-        <label for="profile-email">Email (Optional)</label>
-        <input type="email" id="profile-email" placeholder="Email">
-      </div>
-
-      <div class="modal-actions">
-        <button id="save-profile-btn" class="btn-confirm">Save Changes</button>
-        <button class="cancel-modal-btn btn-cancel">Close</button>
-      </div>
-
-      <div class="logout-container">
-        <button id="logout-btn" class="btn-danger-ghost"><i class="fas fa-sign-out-alt"></i> Logout</button>
-      </div>
+    <div class="modal-section">
+      <label for="profile-username">Username</label>
+      <input type="text" id="profile-username" placeholder="Username">
+    </div>
+    <div class="modal-section">
+      <label for="profile-phone">Phone Number</label>
+      <input type="text" id="profile-phone" placeholder="Phone Number">
+    </div>
+    <div class="modal-section">
+      <label for="profile-email">Email (Optional)</label>
+      <input type="email" id="profile-email" placeholder="Email">
     </div>
 
-    <!-- Rename Room Modal -->
-    <div id="rename-room-modal" class="modal hidden">
-      <h3>Rename Room</h3>
-      <input type="text" id="rename-room-input" placeholder="New Room Name">
-      <div class="modal-actions">
-        <button id="confirm-rename-btn" class="btn-confirm">Rename</button>
-        <button class="cancel-modal-btn btn-cancel">Cancel</button>
-      </div>
+    <div class="modal-actions">
+      <button id="save-profile-btn" class="btn-confirm">Save Changes</button>
+      <button class="cancel-modal-btn btn-cancel">Close</button>
     </div>
 
-    <div id="create-room-modal" class="modal hidden">
-      <h3>Create New Room</h3>
-      <input id="room-name" placeholder="Enter room name">
-      <input id="room-description" placeholder="Room description (optional)">
-      <select id="room-type">
-        <option value="GROUP_CHAT">Group Chat</option>
-        <option value="BROADCAST">Broadcast</option>
-      </select>
+    <div class="logout-container">
+      <button id="logout-btn" class="btn-danger-ghost"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>
+  </div>
 
-      <div class="checkbox-container">
-        <input type="checkbox" id="room-private">
-        <label for="room-private">Make this a private room</label>
-      </div>
+  <!-- Rename Room Modal -->
+  <div id="rename-room-modal" class="modal hidden">
+    <h3>Rename Room</h3>
+    <input type="text" id="rename-room-input" placeholder="New Room Name">
+    <div class="modal-actions">
+      <button id="confirm-rename-btn" class="btn-confirm">Rename</button>
+      <button class="cancel-modal-btn btn-cancel">Cancel</button>
+    </div>
+  </div>
 
-      <button id="create-room-btn">Create Room</button>
-      <button class="cancel-modal-btn">Cancel</button>
+  <div id="create-room-modal" class="modal hidden">
+    <h3>Create New Room</h3>
+    <input id="room-name" placeholder="Enter room name">
+    <input id="room-description" placeholder="Room description (optional)">
+    <select id="room-type">
+      <option value="GROUP_CHAT">Group Chat</option>
+      <option value="BROADCAST">Broadcast</option>
+    </select>
+
+    <div class="checkbox-container">
+      <input type="checkbox" id="room-private">
+      <label for="room-private">Make this a private room</label>
     </div>
 
-    <div id="join-room-modal" class="modal hidden">
-      <h3>Join a Room</h3>
-      <div id="available-rooms">Loading available rooms...</div>
-      <button class="cancel-modal-btn">Cancel</button>
-    </div>
+    <button id="create-room-btn">Create Room</button>
+    <button class="cancel-modal-btn">Cancel</button>
+  </div>
 
-    <div id="direct-message-modal" class="modal hidden">
-      <h3>New Direct Message</h3>
-      <input id="dm-phone" placeholder="Enter phone number">
-      <p style="text-align:center; margin: 0.5rem 0;">OR</p>
-      <input id="dm-username" placeholder="Enter username">
-      <button id="start-dm-btn">Start Chat</button>
-      <button class="cancel-modal-btn">Cancel</button>
-    </div>
+  <div id="join-room-modal" class="modal hidden">
+    <h3>Join a Room</h3>
+    <div id="available-rooms">Loading available rooms...</div>
+    <button class="cancel-modal-btn">Cancel</button>
+  </div>
 
+  <div id="direct-message-modal" class="modal hidden">
+    <h3>New Direct Message</h3>
+    <input id="dm-phone" placeholder="Enter phone number">
+    <p style="text-align:center; margin: 0.5rem 0;">OR</p>
+    <input id="dm-username" placeholder="Enter username">
+    <button id="start-dm-btn">Start Chat</button>
+    <button class="cancel-modal-btn">Cancel</button>
   </div>
 
   <!-- Toast container -->

@@ -11,8 +11,6 @@ class ChatApp {
         this.init();
     }
 
-    // ... (init and other methods remain same)
-
     subscribeToRoom(roomId) {
         // Clear any existing subscriptions just in case
         this.unsubscribeFromRoom(roomId);
@@ -47,62 +45,6 @@ class ChatApp {
             });
         }
         this.roomSubscriptions = [];
-    }
-
-    // ... (init, setupEventListeners, etc. remain same)
-
-    // ...
-
-    displayMessage(messageData, animate = true) {
-        const messageArea = document.getElementById('chat-messages');
-        const messageElement = document.createElement('div');
-
-        const isOwnMessage = messageData.sender.username === this.currentUser.username;
-        messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
-
-        const date = messageData.timestamp ? new Date(messageData.timestamp) : new Date();
-        const timestamp = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        // Store timestamp for future checks
-        messageElement.dataset.timestamp = timestamp;
-
-        // Check last ACTUAL message time to see if we should show it
-        const messages = messageArea.querySelectorAll('.message');
-        const lastMessageElement = messages.length > 0 ? messages[messages.length - 1] : null;
-        const lastTime = lastMessageElement ? lastMessageElement.dataset.timestamp : null;
-
-        // Show time if different from last message, OR if there was no last message
-        const showTime = timestamp !== lastTime;
-
-        const initials = messageData.sender.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
-
-        messageElement.innerHTML = `
-                    <div class="message-avatar">${initials}</div>
-                    <div class="message-content">
-                        <div class="message-header">
-                            <span class="message-sender">${this.escapeHtml(messageData.sender.displayName)}</span>
-                            ${showTime ? `<span class="message-time">${timestamp}</span>` : ''}
-                        </div>
-                        <div class="message-text">${this.escapeHtml(messageData.text)}</div>
-                    </div>
-                `;
-
-        if (animate) {
-            messageElement.style.opacity = '0';
-            messageElement.style.transform = 'translateY(20px)';
-        }
-
-        messageArea.appendChild(messageElement);
-
-        if (animate) {
-            requestAnimationFrame(() => {
-                messageElement.style.transition = 'all 0.3s ease';
-                messageElement.style.opacity = '1';
-                messageElement.style.transform = 'translateY(0)';
-            });
-        }
-
-        this.scrollToBottom();
     }
 
     init() {
@@ -315,7 +257,7 @@ class ChatApp {
         document.getElementById('current-user').textContent = this.currentUser.displayName || this.currentUser.username;
         // map statuses to select values if present
         try {
-            document.getElementById('status-select').value = (this.currentUser.status || 'ONLINE').toLowerCase();
+            document.getElementById('status-select').value = (this.currentUser.status || 'ONLINE');
         } catch (e) { /* ignore */ }
 
         this.connectWebSocket();
@@ -436,7 +378,7 @@ class ChatApp {
                         <div class="room-item-header">
                             <div class="room-name">${this.escapeHtml(displayName)}</div>
                             <div class="room-actions-btn">
-                                <button class="btn-icon" onclick="event.stopPropagation(); chatApp.leaveRoom(${room.id})" title="Leave Room">
+                                <button class="btn-icon" onclick="event.stopPropagation(); chatApp.leaveRoom('${room.id}')" title="Leave Room">
                                     <i class="fas fa-sign-out-alt"></i>
                                 </button>
                             </div>
@@ -468,7 +410,7 @@ class ChatApp {
                         ${room.description ? `<div class="room-item-desc">${this.escapeHtml(room.description)}</div>` : ''}
                         <div class="room-item-meta">
                             <span>${room.roomType.replace('_', ' ')}</span>
-                            <button class="btn-primary btn-small" onclick="event.stopPropagation(); chatApp.joinRoom(${room.id})">
+                            <button class="btn-primary btn-small" onclick="event.stopPropagation(); chatApp.joinRoom('${room.id}')">
                                 Join Room
                             </button>
                         </div>
@@ -895,23 +837,7 @@ class ChatApp {
         }
     }
 
-    async createDirectMessage(username) {
-        try {
-            const response = await fetch(`/api/chat/direct/${username}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
-            });
-            if (response.ok) {
-                const room = await response.json();
-                this.addRoom(room);
-                this.selectRoom(room.id);
-            }
-        } catch (error) {
-            this.showToast('Error creating direct message', 'error');
-        }
-    }
+
 
 
     // Status Management

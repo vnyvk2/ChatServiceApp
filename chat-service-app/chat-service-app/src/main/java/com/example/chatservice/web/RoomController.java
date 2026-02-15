@@ -9,6 +9,8 @@ import com.example.chatservice.service.ChatRoomService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/rooms")
 @CrossOrigin(origins = "*")
+@Tag(name = "Chat Room Management", description = "Endpoints for creating, joining, leaving, and managing chat rooms and direct messages")
 public class RoomController {
 
     private final ChatRoomService chatRoomService;
@@ -36,6 +39,7 @@ public class RoomController {
     }
 
     @PostMapping
+    @Operation(summary = "Create a new room", description = "Creates a new public or private chat room.")
     public ResponseEntity<?> createRoom(@AuthenticationPrincipal UserDetails principal,
             @Valid @RequestBody CreateRoomRequest request) {
         if (principal == null) {
@@ -74,8 +78,12 @@ public class RoomController {
     }
 
     @PostMapping("/{roomId}/join")
-    public ResponseEntity<?> joinRoom(@PathVariable Long roomId,
+    @Operation(summary = "Join a room", description = "Adds the current user to a specific chat room and broadcasts a join event.")
+    public ResponseEntity<?> joinRoom(@PathVariable String roomId,
             @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
         User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
         chatRoomService.addMember(roomId, user.getId());
 
@@ -94,8 +102,12 @@ public class RoomController {
     }
 
     @PostMapping("/{roomId}/leave")
-    public ResponseEntity<?> leaveRoom(@PathVariable Long roomId,
+    @Operation(summary = "Leave a room", description = "Removes the current user from a specific chat room and broadcasts a leave event.")
+    public ResponseEntity<?> leaveRoom(@PathVariable String roomId,
             @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
         User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
         chatRoomService.removeMember(roomId, user.getId());
 
@@ -114,6 +126,7 @@ public class RoomController {
     }
 
     @GetMapping("/available")
+    @Operation(summary = "Get available public rooms", description = "Lists all public chat rooms that users can join.")
     public ResponseEntity<?> getAvailableRooms() {
         try {
             List<ChatRoom> rooms = chatRoomService.listPublicRooms();
@@ -131,7 +144,11 @@ public class RoomController {
     }
 
     @GetMapping("/my-rooms")
+    @Operation(summary = "Get my rooms", description = "Lists all chat rooms the current user is a member of.")
     public ResponseEntity<?> getMyRooms(@AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
         try {
             User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
             List<RoomMembership> memberships = chatRoomService.listMembershipsForUser(user.getId());
@@ -162,6 +179,7 @@ public class RoomController {
     }
 
     @PostMapping("/direct-message")
+    @Operation(summary = "Create or get DM room", description = "Creates a new direct message room or retrieves an existing one between the current user and target user.")
     public ResponseEntity<?> createDirectMessage(@AuthenticationPrincipal UserDetails principal,
             @Valid @RequestBody DirectMessageRequest request) {
         if (principal == null) {
@@ -194,7 +212,8 @@ public class RoomController {
     }
 
     @GetMapping("/{roomId}/members")
-    public ResponseEntity<?> getRoomMembers(@PathVariable Long roomId) {
+    @Operation(summary = "Get room members", description = "Retrieves a list of all members in a specific chat room.")
+    public ResponseEntity<?> getRoomMembers(@PathVariable String roomId) {
         List<RoomMembership> members = chatRoomService.getRoomMembers(roomId);
         if (members == null) {
             return ResponseEntity.status(404).body(Map.of("error", "Room not found"));
@@ -208,8 +227,12 @@ public class RoomController {
     }
 
     @PostMapping("/create-with-options")
+    @Operation(summary = "Create room with extended options", description = "Creates a room with custom descriptions and initial members.")
     public ResponseEntity<?> createRoomWithOptions(@AuthenticationPrincipal UserDetails principal,
             @Valid @RequestBody CreateRoomWithOptionsRequest request) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
         User creator = userRepository.findByUsername(principal.getUsername()).orElseThrow();
 
         // Validate room name uniqueness for public rooms
@@ -271,28 +294,18 @@ public class RoomController {
     }
 
     @PutMapping("/{roomId}/rename")
-    public ResponseEntity<?> renameRoom(@PathVariable Long roomId,
+    @Operation(summary = "Rename a room", description = "Updates the name of a group chat room or a direct message room.")
+    public ResponseEntity<?> renameRoom(@PathVariable String roomId,
             @AuthenticationPrincipal UserDetails principal,
             @RequestBody RenameRoomRequest request) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
         User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
 
-        // Check if user is admin or creator (assuming only they can rename, or anyone?
-        // User said "we should be able to chnge the room name". I'll allow members for
-        // now or check admin)
-        // For simplicity and matching typical requirements, usually only
-        // admins/creators update room details.
-        // Checking if user is admin of the room:
         if (!chatRoomService.isUserRoomAdmin(user.getId(), roomId) &&
                 !chatRoomService.findRoomById(roomId).map(r -> r.getCreatedBy().getId().equals(user.getId()))
                         .orElse(false)) {
-            // For DM, maybe allow any participant? user asked "for the dm chats i should be
-            // able to change the name ... for room to we should be able to chnge".
-            // If it is DM, usually name is auto-generated, but user wants to change it.
-            // If it's a DM, any member can "rename" it locally? Or globally?
-            // If I change it globally, the other user sees it too.
-            // Let's assume global rename for now.
-
-            // If it is a DM room, check if user is member
             ChatRoom room = chatRoomService.findRoomById(roomId).orElse(null);
             if (room != null && room.getRoomType() == ChatRoom.RoomType.DIRECT_MESSAGE) {
                 if (!chatRoomService.isUserMemberOfRoom(user.getId(), roomId)) {

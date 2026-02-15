@@ -1,52 +1,48 @@
 package com.example.chatservice.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.io.Serializable;
 import java.time.Instant;
 
-@Entity
-@Table(name = "room_memberships", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_room_user", columnNames = { "room_id", "user_id" })
-})
+@Document(collection = "room_memberships")
+@CompoundIndex(name = "uk_room_user", def = "{'roomId': 1, 'userId': 1}", unique = true)
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class RoomMembership {
 
-    @EmbeddedId
+    @Id
     @EqualsAndHashCode.Include
-    private RoomMembershipId id = new RoomMembershipId();
+    private String id;
 
-    @ManyToOne(optional = false)
-    @MapsId("roomId")
-    @JoinColumn(name = "room_id", nullable = false)
+    @DBRef
     @JsonIgnoreProperties({ "createdBy", "createdAt", "updatedAt" })
     private ChatRoom room;
 
-    @ManyToOne(optional = false)
-    @MapsId("userId")
-    @JoinColumn(name = "user_id", nullable = false)
+    @Indexed
+    private String roomId;
+
+    @DBRef
     @JsonIgnoreProperties({ "passwordHash", "roles", "email", "lastSeenAt", "createdAt", "updatedAt" })
     private User user;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Indexed
+    private String userId;
+
     private Role role = Role.MEMBER;
 
-    @Column(nullable = false)
     private boolean isActive = true;
 
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @CreatedDate
     private Instant joinedAt;
 
-    @Column
     private Instant leftAt;
 
     public enum Role {
@@ -55,8 +51,8 @@ public class RoomMembership {
 
     public void setRoom(ChatRoom room) {
         this.room = room;
-        if (room != null && this.id != null) {
-            this.id.setRoomId(room.getId());
+        if (room != null) {
+            this.roomId = room.getId();
         }
     }
 
@@ -66,8 +62,8 @@ public class RoomMembership {
 
     public void setUser(User user) {
         this.user = user;
-        if (user != null && this.id != null) {
-            this.id.setUserId(user.getId());
+        if (user != null) {
+            this.userId = user.getId();
         }
     }
 
@@ -75,11 +71,11 @@ public class RoomMembership {
         return user;
     }
 
-    public void setId(RoomMembershipId id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public RoomMembershipId getId() {
+    public String getId() {
         return id;
     }
 
@@ -113,33 +109,5 @@ public class RoomMembership {
 
     public Instant getLeftAt() {
         return leftAt;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    public static class RoomMembershipId implements Serializable {
-        @Column(name = "room_id")
-        private Long roomId;
-
-        @Column(name = "user_id")
-        private Long userId;
-
-        public Long getRoomId() {
-            return roomId;
-        }
-
-        public void setRoomId(Long roomId) {
-            this.roomId = roomId;
-        }
-
-        public Long getUserId() {
-            return userId;
-        }
-
-        public void setUserId(Long userId) {
-            this.userId = userId;
-        }
     }
 }

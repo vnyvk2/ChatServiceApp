@@ -40,15 +40,18 @@
             e.preventDefault();
             const formData = new FormData(this);
             const data = Object.fromEntries(formData);
-            let res = await fetch("/api/auth/signup", {
+            let res = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
             });
-            if (res.ok) {
-                window.location.href = "/login.html";
+            const result = await res.json();
+            if (res.ok && result.token) {
+                localStorage.setItem('chatToken', result.token);
+                localStorage.setItem('chatUser', JSON.stringify(result.user));
+                window.location.href = "/chat.html";
             } else {
-                alert("Signup failed!");
+                alert(result.error || "Signup failed!");
             }
         });
     </script>

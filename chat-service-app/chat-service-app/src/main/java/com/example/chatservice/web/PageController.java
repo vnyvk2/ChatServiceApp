@@ -8,17 +8,16 @@ public class PageController {
 
     @GetMapping("/login")
     public String loginPage() {
-        return "login";
+        return "redirect:/index.html";
     }
 
     @GetMapping("/signup")
     public String signupPage() {
-        return "signup";
+        return "redirect:/index.html";
     }
 
     @GetMapping("/chat")
     public String chatPage() {
-        return "chat";
+        return "redirect:/chat.html";
     }
 }
-

@@ -8,7 +8,6 @@ import com.example.chatservice.repository.RoomMembershipRepository;
 import com.example.chatservice.repository.UserRepository;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -22,16 +21,15 @@ public class ChatRoomService {
     private final UserRepository userRepository;
 
     public ChatRoomService(ChatRoomRepository chatRoomRepository,
-                           RoomMembershipRepository membershipRepository,
-                           UserRepository userRepository) {
+            RoomMembershipRepository membershipRepository,
+            UserRepository userRepository) {
         this.chatRoomRepository = chatRoomRepository;
         this.membershipRepository = membershipRepository;
         this.userRepository = userRepository;
     }
 
-    @Transactional
     public ChatRoom createRoom(String name, String description, ChatRoom.RoomType roomType,
-                               boolean isPrivate, User creator) {
+            boolean isPrivate, User creator) {
         ChatRoom room = new ChatRoom();
         room.setName(name);
         room.setDescription(description);
@@ -42,8 +40,6 @@ public class ChatRoomService {
 
         // Add creator as admin
         RoomMembership membership = new RoomMembership();
-        membership.getId().setRoomId(room.getId());
-        membership.getId().setUserId(creator.getId());
         membership.setRoom(room);
         membership.setUser(creator);
         membership.setRole(RoomMembership.Role.ADMIN);
@@ -53,11 +49,13 @@ public class ChatRoomService {
         return room;
     }
 
-    @Transactional
     public ChatRoom createDirectMessage(User user1, User user2) {
-        // Check if DM already exists
-        String roomName = "DM_" + Math.min(user1.getId(), user2.getId()) + "_" + Math.max(user1.getId(), user2.getId());
-        Optional<ChatRoom> existing = chatRoomRepository.findByNameAndRoomType(roomName, ChatRoom.RoomType.DIRECT_MESSAGE);
+        // Check if DM already exists — use sorted IDs for consistency
+        String id1 = user1.getId();
+        String id2 = user2.getId();
+        String roomName = "DM_" + (id1.compareTo(id2) < 0 ? id1 + "_" + id2 : id2 + "_" + id1);
+        Optional<ChatRoom> existing = chatRoomRepository.findByNameAndRoomType(roomName,
+                ChatRoom.RoomType.DIRECT_MESSAGE);
 
         if (existing.isPresent()) {
             return existing.get();
@@ -74,8 +72,6 @@ public class ChatRoomService {
 
         // Add both users as members
         RoomMembership membership1 = new RoomMembership();
-        membership1.getId().setRoomId(dmRoom.getId());
-        membership1.getId().setUserId(user1.getId());
         membership1.setRoom(dmRoom);
         membership1.setUser(user1);
         membership1.setRole(RoomMembership.Role.MEMBER);
@@ -83,8 +79,6 @@ public class ChatRoomService {
         membershipRepository.save(membership1);
 
         RoomMembership membership2 = new RoomMembership();
-        membership2.getId().setRoomId(dmRoom.getId());
-        membership2.getId().setUserId(user2.getId());
         membership2.setRoom(dmRoom);
         membership2.setUser(user2);
         membership2.setRole(RoomMembership.Role.MEMBER);
@@ -94,8 +88,7 @@ public class ChatRoomService {
         return dmRoom;
     }
 
-    @Transactional
-    public RoomMembership addMember(@NonNull Long roomId, @NonNull Long userId) {
+    public RoomMembership addMember(@NonNull String roomId, @NonNull String userId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found"));
         User user = userRepository.findById(userId)
@@ -116,8 +109,6 @@ public class ChatRoomService {
 
         // Create new membership
         RoomMembership membership = new RoomMembership();
-        membership.getId().setRoomId(roomId);
-        membership.getId().setUserId(userId);
         membership.setRoom(room);
         membership.setUser(user);
         membership.setRole(RoomMembership.Role.MEMBER);
@@ -125,8 +116,7 @@ public class ChatRoomService {
         return membershipRepository.save(membership);
     }
 
-    @Transactional
-    public void removeMember(Long roomId, Long userId) {
+    public void removeMember(String roomId, String userId) {
         Optional<RoomMembership> membershipOpt = membershipRepository.findByRoomIdAndUserId(roomId, userId);
         if (membershipOpt.isPresent()) {
             RoomMembership membership = membershipOpt.get();
@@ -136,49 +126,40 @@ public class ChatRoomService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public List<RoomMembership> listMembershipsForUser(Long userId) {
+    public List<RoomMembership> listMembershipsForUser(String userId) {
         return membershipRepository.findByUserIdAndIsActiveTrue(userId);
     }
 
-    @Transactional(readOnly = true)
-    public List<RoomMembership> getRoomMembers(Long roomId) {
+    public List<RoomMembership> getRoomMembers(String roomId) {
         return membershipRepository.findByRoomIdAndIsActiveTrue(roomId);
     }
 
-    @Transactional(readOnly = true)
     public List<ChatRoom> listPublicRooms() {
         return chatRoomRepository.findByIsPrivateFalseAndRoomType(ChatRoom.RoomType.GROUP_CHAT);
     }
 
-    @Transactional(readOnly = true)
     public List<ChatRoom> listAllPublicRooms() {
         return chatRoomRepository.findByIsPrivateFalse();
     }
 
-    @Transactional(readOnly = true)
-    public Optional<ChatRoom> findRoomById(@NonNull Long roomId) {
+    public Optional<ChatRoom> findRoomById(@NonNull String roomId) {
         return chatRoomRepository.findById(roomId);
     }
 
-    @Transactional(readOnly = true)
     public Optional<ChatRoom> findRoomByName(String name) {
         return chatRoomRepository.findByName(name);
     }
 
-    @Transactional(readOnly = true)
-    public boolean isUserMemberOfRoom(Long userId, Long roomId) {
-        return membershipRepository.existsByRoom_IdAndUser_Id(roomId, userId);
+    public boolean isUserMemberOfRoom(String userId, String roomId) {
+        return membershipRepository.existsByRoomIdAndUserId(roomId, userId);
     }
 
-    @Transactional(readOnly = true)
-    public boolean isUserActiveMemberOfRoom(Long userId, Long roomId) {
+    public boolean isUserActiveMemberOfRoom(String userId, String roomId) {
         Optional<RoomMembership> membership = membershipRepository.findByRoomIdAndUserId(roomId, userId);
         return membership.isPresent() && membership.get().isActive();
     }
 
-    @Transactional
-    public void updateMemberRole(Long roomId, Long userId, RoomMembership.Role newRole) {
+    public void updateMemberRole(String roomId, String userId, RoomMembership.Role newRole) {
         Optional<RoomMembership> membershipOpt = membershipRepository.findByRoomIdAndUserId(roomId, userId);
         if (membershipOpt.isPresent()) {
             RoomMembership membership = membershipOpt.get();
@@ -189,8 +170,7 @@ public class ChatRoomService {
         }
     }
 
-    @Transactional
-    public void deleteRoom(@NonNull Long roomId) {
+    public void deleteRoom(@NonNull String roomId) {
         // First, deactivate all memberships
         List<RoomMembership> memberships = membershipRepository.findByRoomIdAndIsActiveTrue(roomId);
         for (RoomMembership membership : memberships) {
@@ -203,8 +183,7 @@ public class ChatRoomService {
         chatRoomRepository.deleteById(roomId);
     }
 
-    @Transactional
-    public ChatRoom updateRoom(@NonNull Long roomId, String name, String description, boolean isPrivate) {
+    public ChatRoom updateRoom(@NonNull String roomId, String name, String description, boolean isPrivate) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found"));
 
@@ -219,13 +198,11 @@ public class ChatRoomService {
         return chatRoomRepository.save(room);
     }
 
-    @Transactional(readOnly = true)
-    public long getRoomMemberCount(Long roomId) {
+    public long getRoomMemberCount(String roomId) {
         return membershipRepository.findByRoomIdAndIsActiveTrue(roomId).size();
     }
 
-    @Transactional(readOnly = true)
-    public List<User> getActiveUsersInRoom(Long roomId) {
+    public List<User> getActiveUsersInRoom(String roomId) {
         return membershipRepository.findByRoomIdAndIsActiveTrue(roomId)
                 .stream()
                 .map(RoomMembership::getUser)
@@ -233,8 +210,7 @@ public class ChatRoomService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public boolean canUserAccessRoom(@NonNull Long userId, @NonNull Long roomId) {
+    public boolean canUserAccessRoom(@NonNull String userId, @NonNull String roomId) {
         Optional<ChatRoom> roomOpt = chatRoomRepository.findById(roomId);
         if (roomOpt.isEmpty()) {
             return false;
@@ -251,21 +227,18 @@ public class ChatRoomService {
         return isUserActiveMemberOfRoom(userId, roomId);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<RoomMembership> getMembership(Long userId, Long roomId) {
+    public Optional<RoomMembership> getMembership(String userId, String roomId) {
         return membershipRepository.findByRoomIdAndUserId(roomId, userId);
     }
 
-    @Transactional(readOnly = true)
-    public boolean isUserRoomAdmin(Long userId, Long roomId) {
+    public boolean isUserRoomAdmin(String userId, String roomId) {
         Optional<RoomMembership> membership = membershipRepository.findByRoomIdAndUserId(roomId, userId);
         return membership.isPresent() &&
                 membership.get().isActive() &&
                 membership.get().getRole() == RoomMembership.Role.ADMIN;
     }
 
-    @Transactional(readOnly = true)
-    public List<ChatRoom> getUserOwnedRooms(Long userId) {
+    public List<ChatRoom> getUserOwnedRooms(String userId) {
         return chatRoomRepository.findAll().stream()
                 .filter(room -> room.getCreatedBy() != null && room.getCreatedBy().getId().equals(userId))
                 .toList();

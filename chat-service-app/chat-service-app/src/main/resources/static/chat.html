@@ -13,7 +13,8 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <button id="profile-btn" class="profile-btn" style="display: flex; align-items: center; gap: 0.75rem; text-align: left; width: 100%;">
+                <button id="profile-btn" class="profile-btn"
+                    style="display: flex; align-items: center; gap: 0.75rem; text-align: left; width: 100%;">
                     <div class="avatar"><i class="fas fa-user"></i></div>
                     <div class="user-info">
                         <span id="current-user" class="user-name">Loading...</span>
@@ -21,16 +22,16 @@
                     </div>
                     <i class="fas fa-chevron-right" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
                 </button>
-                    <!-- Status Select moved to inside profile or kept here? I'll keep it here for quick access but maybe style it better or just keep it -->
-                   <!-- <select id="status-select"> ... </select> -->
+                <!-- Status Select moved to inside profile or kept here? I'll keep it here for quick access but maybe style it better or just keep it -->
+                <!-- <select id="status-select"> ... </select> -->
             </div>
-             <div style="padding: 0 1.25rem 1rem 1.25rem; border-bottom: 1px solid var(--border-light);">
-                 <select id="status-select" style="width: 100%; padding: 0.4rem; font-size: 0.85rem;">
-                        <option value="ONLINE">🟢 Online</option>
-                        <option value="AWAY">🟡 Away</option>
-                        <option value="OFFLINE">⚫ Offline</option>
-                 </select>
-             </div>
+            <div style="padding: 0 1.25rem 1rem 1.25rem; border-bottom: 1px solid var(--border-light);">
+                <select id="status-select" style="width: 100%; padding: 0.4rem; font-size: 0.85rem;">
+                    <option value="ONLINE">🟢 Online</option>
+                    <option value="AWAY">🟡 Away</option>
+                    <option value="OFFLINE">⚫ Offline</option>
+                </select>
+            </div>
 
             <h3>Menu</h3>
             <div class="action-buttons">
@@ -48,7 +49,8 @@
             <div class="chat-header">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <h2 id="current-room-name">Select a room</h2>
-                    <button id="rename-room-btn" class="edit-btn hidden" title="Rename Room"><i class="fas fa-pen"></i></button>
+                    <button id="rename-room-btn" class="edit-btn hidden" title="Rename Room"><i
+                            class="fas fa-pen"></i></button>
                 </div>
                 <div class="header-actions">
                     <button class="btn-ghost" id="show-members-btn" onclick="toggleMembers()" class="hidden"><i
@@ -87,12 +89,12 @@
 
     <!-- Modals -->
     <div id="modal-overlay" class="hidden"></div>
-    
+
     <!-- Profile Modal -->
     <div id="profile-modal" class="modal hidden">
         <div class="profile-avatar-large"><i class="fas fa-user"></i></div>
         <h3 style="text-align: center;">My Profile</h3>
-        
+
         <div class="modal-section">
             <label for="profile-username">Username</label>
             <input type="text" id="profile-username" placeholder="Username">
@@ -152,6 +154,12 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script>
+        // Redirect to login if no session
+        if (!localStorage.getItem('chatToken')) {
+            window.location.href = '/index.html';
+        }
+    </script>
     <script src="assets/js/app.js"></script>
 </body>
 

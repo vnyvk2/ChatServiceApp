@@ -31,15 +31,31 @@ public class ExampleSecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.security.enabled:true}")
+    private boolean securityEnabled;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        if (!securityEnabled) {
+            http
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                    // Still add JWT filter so @AuthenticationPrincipal is populated from tokens
+                    .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            return http.build();
+        }
+
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Allow auth endpoints, static resources and root
-                        .requestMatchers("/api/auth/**", "/", "/index.html", "/assets/**", "/css/**", "/js/**",
-                                "/ws/**", "/error")
+                        .requestMatchers("/api/auth/**", "/", "/index.html", "/chat.html", "/login.html",
+                                "/signup.html", "/assets/**", "/css/**", "/js/**",
+                                "/ws/**", "/error",
+                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
+                                "/api/users/**", "/api/rooms/**", "/api/messages/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .anyRequest().authenticated())
