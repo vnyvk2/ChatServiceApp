@@ -157,7 +157,20 @@ public class RoomController {
                 ChatRoom room = membership.getRoom();
                 Map<String, Object> roomData = new java.util.HashMap<>();
                 roomData.put("id", room.getId());
-                roomData.put("name", room.getName());
+                String displayName = room.getName();
+                if (room.getRoomType() == ChatRoom.RoomType.DIRECT_MESSAGE) {
+                    List<RoomMembership> roomMembers = chatRoomService.getRoomMembers(room.getId());
+                    User otherUser = roomMembers.stream()
+                            .map(RoomMembership::getUser)
+                            .filter(u -> !u.getId().equals(user.getId()))
+                            .findFirst()
+                            .orElse(null);
+                    if (otherUser != null) {
+                        displayName = otherUser.getPhoneNumber() != null ? otherUser.getPhoneNumber() : otherUser.getUsername();
+                    }
+                }
+                
+                roomData.put("name", displayName);
                 roomData.put("description", room.getDescription() != null ? room.getDescription() : "");
                 roomData.put("roomType", room.getRoomType().name());
                 roomData.put("isPrivate", room.isPrivate());
@@ -206,7 +219,7 @@ public class RoomController {
         ChatRoom dmRoom = chatRoomService.createDirectMessage(currentUser, targetUser);
         Map<String, Object> response = new java.util.HashMap<>();
         response.put("id", dmRoom.getId());
-        response.put("name", dmRoom.getName());
+        response.put("name", targetUser.getPhoneNumber() != null ? targetUser.getPhoneNumber() : targetUser.getUsername());
         response.put("roomType", dmRoom.getRoomType().name());
         return ResponseEntity.ok(response);
     }
@@ -222,6 +235,8 @@ public class RoomController {
                 "username", membership.getUser().getUsername(),
                 "displayName", membership.getUser().getDisplayName(),
                 "status", membership.getUser().getStatus(),
+                "phoneNumber", membership.getUser().getPhoneNumber() != null ? membership.getUser().getPhoneNumber() : "",
+                "lastSeenAt", membership.getUser().getLastSeenAt(),
                 "role", membership.getRole(),
                 "joinedAt", membership.getJoinedAt())).toList());
     }

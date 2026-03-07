@@ -74,10 +74,6 @@ class ChatApp {
         document.getElementById('profile-btn')?.addEventListener('click', () => this.showProfile());
         document.getElementById('save-profile-btn')?.addEventListener('click', () => this.saveProfile());
 
-        // Rename logic
-        document.getElementById('rename-room-btn')?.addEventListener('click', () => this.showRenameRoom());
-        document.getElementById('confirm-rename-btn')?.addEventListener('click', () => this.renameRoom());
-
         // Cancel buttons for new modals
         document.querySelectorAll('.cancel-modal-btn').forEach(btn => {
             btn.addEventListener('click', () => this.closeModals());
@@ -373,9 +369,8 @@ class ChatApp {
             roomElement.className = 'room-item';
             roomElement.onclick = (e) => this.selectRoom(room.id, room.name, room.roomType, e);
 
-            // Check if there is a local alias for this room
-            const alias = localStorage.getItem('room_alias_' + room.id);
-            const displayName = alias || room.name;
+            // Use backend room.name directly to ensure DM target name renders
+            const displayName = room.name;
 
             // Hide description for Direct Messages to avoid clutter
             const descriptionHtml = (room.roomType === 'DIRECT_MESSAGE') ? '' :
@@ -436,16 +431,65 @@ class ChatApp {
         this.currentRoom = roomId;
         this.currentRoomType = roomType; // Store room type
 
-        // Use alias if available
-        const alias = localStorage.getItem('room_alias_' + roomId);
-        const displayName = alias || roomName;
+        console.log('[DEBUG selectRoom] roomId:', roomId, 'roomName:', roomName, 'roomType:', roomType);
+
+        // Use backend roomName directly to ensure DM targets are correct
+        const displayName = roomName;
 
         const currentRoomNameEl = document.getElementById('current-room-name');
         if (currentRoomNameEl) currentRoomNameEl.textContent = displayName;
 
-        // Show rename button
-        const renameBtn = document.getElementById('rename-room-btn');
-        if (renameBtn) renameBtn.classList.remove('hidden');
+        // Get or create the info button for DMs
+        let infoBtn = document.getElementById('chat-header-info-btn');
+        if (!infoBtn) {
+            // Dynamically create the button since HTML may be cached
+            infoBtn = document.createElement('button');
+            infoBtn.id = 'chat-header-info-btn';
+            infoBtn.title = 'View User Details';
+            infoBtn.style.cssText = 'font-size: 1rem; color: #3b82f6; display: none; margin-left: 0.5rem; padding: 0.4rem 0.75rem; background: #e0f2fe; border-radius: 6px; border: 1px solid #3b82f6; cursor: pointer; align-items: center; gap: 0.35rem;';
+            infoBtn.innerHTML = '<i class="fas fa-info-circle"></i> View Profile';
+            // Insert it after the room name container
+            const headerContainer = currentRoomNameEl?.closest('div[style]');
+            if (headerContainer && headerContainer.parentNode) {
+                headerContainer.parentNode.insertBefore(infoBtn, headerContainer.nextSibling);
+            }
+            // Attach the click listener
+            infoBtn.addEventListener('click', () => {
+                if (this.currentRoomType === 'DIRECT_MESSAGE' && this.currentRoomOtherMember) {
+                    this._showUserDetailsModal(this.currentRoomOtherMember);
+                } else if (this.currentRoomType === 'DIRECT_MESSAGE') {
+                    this.showToast('User details are still loading...', 'info');
+                }
+            });
+            console.log('[DEBUG] Info button created dynamically');
+        }
+
+        // Get or create the rename button for group chats
+        let renameBtn = document.getElementById('rename-room-btn');
+        if (!renameBtn) {
+            renameBtn = document.createElement('button');
+            renameBtn.id = 'rename-room-btn';
+            renameBtn.title = 'Rename Chat';
+            renameBtn.style.cssText = 'display: none; margin-left: 0.5rem; padding: 0.4rem 0.75rem; background: #f1f5f9; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; align-items: center; gap: 0.35rem;';
+            renameBtn.innerHTML = '<i class="fas fa-pen"></i> Rename';
+            const headerContainer = currentRoomNameEl?.closest('div[style]');
+            if (headerContainer && headerContainer.parentNode) {
+                headerContainer.parentNode.insertBefore(renameBtn, headerContainer.nextSibling);
+            }
+            renameBtn.addEventListener('click', () => this.showRenameRoom());
+            console.log('[DEBUG] Rename button created dynamically');
+        }
+
+        console.log('[DEBUG selectRoom] renameBtn found:', !!renameBtn, 'infoBtn found:', !!infoBtn);
+
+        // Toggle visibility based on room type
+        if (this.currentRoomType === 'DIRECT_MESSAGE') {
+            infoBtn.style.display = 'inline-flex';
+            renameBtn.style.display = 'none';
+        } else {
+            infoBtn.style.display = 'none';
+            renameBtn.style.display = 'inline-flex';
+        }
 
         document.getElementById('chat-input-area').classList.remove('hidden');
 
@@ -531,9 +575,13 @@ class ChatApp {
         const statusIndicator = document.getElementById('room-status-indicator');
         if (this.currentRoomType === 'DIRECT_MESSAGE') {
             const otherMember = members.find(m => m.username !== this.currentUser.username);
+            this.currentRoomOtherMember = otherMember;
             if (otherMember && statusIndicator) {
                  if (otherMember.status === 'ONLINE') {
                      statusIndicator.textContent = 'Online';
+                 } else if (otherMember.lastSeenAt) {
+                     const timestamp = new Date(otherMember.lastSeenAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                     statusIndicator.textContent = 'Last seen at ' + timestamp;
                  } else {
                      statusIndicator.textContent = 'Offline'; 
                  }
@@ -1125,6 +1173,63 @@ class ChatApp {
         }
     }
 
+    _showUserDetailsModal(member) {
+        console.log('[DEBUG] _showUserDetailsModal called with:', member);
+
+        // Ensure modal overlay exists
+        let overlay = document.getElementById('modal-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'modal-overlay';
+            overlay.className = 'hidden';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:9999;';
+            overlay.addEventListener('click', (e) => { if (e.target === e.currentTarget) this.closeModals(); });
+            document.body.appendChild(overlay);
+        }
+
+        // Ensure user details modal exists
+        let modal = document.getElementById('user-details-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'user-details-modal';
+            modal.className = 'modal hidden';
+            modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:2rem;border-radius:12px;width:90%;max-width:420px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);z-index:10000;';
+            modal.innerHTML = `
+                <div style="text-align:center;margin-bottom:1rem;">
+                    <i class="fas fa-user-circle" style="font-size:3rem;color:#3b82f6;"></i>
+                </div>
+                <h3 id="ud-display-name" style="text-align:center;margin-bottom:1.5rem;">User Name</h3>
+                <div style="margin-bottom:1rem;">
+                    <label style="font-size:0.85rem;color:#64748b;">Username</label>
+                    <div id="ud-username" style="padding:0.75rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-top:0.25rem;"></div>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="font-size:0.85rem;color:#64748b;">Phone Number</label>
+                    <div id="ud-phone" style="padding:0.75rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-top:0.25rem;"></div>
+                </div>
+                <div style="display:flex;gap:0.5rem;margin-top:1.5rem;">
+                    <button id="modal-rename-btn" style="flex:1;padding:0.75rem;border-radius:8px;font-weight:500;cursor:pointer;background:#3b82f6;color:white;border:none;">Rename Chat</button>
+                    <button id="modal-close-btn" style="flex:1;padding:0.75rem;border-radius:8px;font-weight:500;cursor:pointer;background:transparent;border:1px solid #e2e8f0;color:#64748b;">Close</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Attach listeners
+            modal.querySelector('#modal-close-btn').addEventListener('click', () => this.closeModals());
+            modal.querySelector('#modal-rename-btn').addEventListener('click', () => {
+                this.closeModals();
+                this.showRenameRoom();
+            });
+        }
+
+        // Populate and show
+        document.getElementById('ud-display-name').textContent = member.displayName || 'Unknown';
+        document.getElementById('ud-username').textContent = member.username || 'N/A';
+        document.getElementById('ud-phone').textContent = member.phoneNumber || 'N/A';
+        overlay.classList.remove('hidden');
+        modal.classList.remove('hidden');
+    }
+
 } // End of ChatApp class
 
 // Initialize app once and bind global functions for onclick HTML usage
@@ -1142,6 +1247,37 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('show-create-room-btn').addEventListener('click', () => chatApp.showCreateRoom());
     document.getElementById('show-join-room-btn').addEventListener('click', () => chatApp.showJoinRoom());
     document.getElementById('show-dm-btn').addEventListener('click', () => chatApp.showDirectMessage());
+
+    // --- Header Info Button for DMs ---
+    const headerInfoBtn = document.getElementById('chat-header-info-btn');
+    if (headerInfoBtn) {
+        headerInfoBtn.addEventListener('click', () => {
+            if (chatApp.currentRoomType === 'DIRECT_MESSAGE' && chatApp.currentRoomOtherMember) {
+                document.getElementById('ud-display-name').textContent = chatApp.currentRoomOtherMember.displayName || 'Unknown';
+                document.getElementById('ud-username').textContent = chatApp.currentRoomOtherMember.username || 'N/A';
+                document.getElementById('ud-phone').textContent = chatApp.currentRoomOtherMember.phoneNumber || 'N/A';
+                document.getElementById('modal-overlay').classList.remove('hidden');
+                document.getElementById('user-details-modal').classList.remove('hidden');
+            } else if (chatApp.currentRoomType === 'DIRECT_MESSAGE') {
+                 chatApp.showToast('User details are still loading...', 'info');
+            }
+        });
+    }
+
+    // --- Rename Room Trigger for Group Chats ---
+    document.getElementById('rename-room-btn')?.addEventListener('click', () => chatApp.showRenameRoom());
+
+    // --- Rename Button in Modal ---
+    const modalRenameBtn = document.getElementById('modal-rename-btn');
+    if (modalRenameBtn) {
+        modalRenameBtn.addEventListener('click', () => {
+            chatApp.closeModals();
+            chatApp.showRenameRoom();
+        });
+    }
+    
+    // --- Rename Room Submit Button ---
+    document.getElementById('confirm-rename-btn')?.addEventListener('click', () => chatApp.renameRoom());
 
     // --- User Status Dropdown Listener ---
     document.getElementById('status-select').addEventListener('change', () => chatApp.updateStatus());

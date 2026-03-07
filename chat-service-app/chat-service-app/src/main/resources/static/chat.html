@@ -47,13 +47,13 @@
 
         <div class="main-content">
             <div class="chat-header">
-                <div style="display: flex; flex-direction: column; justify-content: center;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="display: flex; flex-direction: column; justify-content: center;">
                         <h2 id="current-room-name" style="margin: 0; line-height: 1;">Select a room</h2>
-                        <button id="rename-room-btn" class="edit-btn hidden" title="Rename Room"><i
-                                class="fas fa-pen"></i></button>
+                        <div id="room-status-indicator" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;"></div>
                     </div>
-                    <div id="room-status-indicator" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;"></div>
+                    <button id="chat-header-info-btn" class="edit-btn" title="View User Details" style="font-size: 1rem; color: var(--primary); display: none; margin-left: auto; padding: 0.5rem; background: #e0f2fe; border-radius: 4px; border: 1px solid var(--primary); cursor: pointer;"><i class="fas fa-info-circle"></i> View Profile</button>
+                    <button id="rename-room-btn" class="edit-btn" title="Rename Group Chat" style="display: none; margin-left: auto; padding: 0.5rem; background: #f1f5f9; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;"><i class="fas fa-pen"></i> Rename Chat</button>
                 </div>
                 <div class="header-actions">
                     <button class="btn-ghost" id="show-members-btn" onclick="toggleMembers()" class="hidden"><i
@@ -142,6 +142,26 @@
         <button id="create-room-btn">Create</button>
         <button class="cancel-modal-btn">Cancel</button>
     </div>
+
+    <!-- User Details Modal -->
+    <div id="user-details-modal" class="modal hidden">
+        <div class="profile-avatar-large"><i class="fas fa-user-circle"></i></div>
+        <h3 id="ud-display-name" style="text-align: center;">User Name</h3>
+        
+        <div class="modal-section" style="margin-top: 1rem;">
+            <label>Username</label>
+            <div id="ud-username" style="padding: 0.75rem; background: #f8fafc; border-radius: var(--radius-md); border: 1px solid var(--border-light);"></div>
+        </div>
+        <div class="modal-section">
+            <label>Phone Number</label>
+            <div id="ud-phone" style="padding: 0.75rem; background: #f8fafc; border-radius: var(--radius-md); border: 1px solid var(--border-light);"></div>
+        </div>
+        
+        <div class="modal-actions">
+            <button id="modal-rename-btn" class="btn-confirm" style="background-color: var(--primary);">Rename Chat</button>
+            <button class="cancel-modal-btn btn-cancel">Close</button>
+        </div>
+    </div>
     <div id="join-room-modal" class="modal hidden">
         <div id="available-rooms"></div>
     </div>
@@ -163,7 +183,7 @@
             window.location.href = '/index.html';
         }
     </script>
-    <script src="assets/js/app.js"></script>
+    <script src="assets/js/app.js?v=8"></script>
 </body>
 
 </html>
