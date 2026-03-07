@@ -1,4 +1,4 @@
-package com.example.chatservice.web;
+package com.example.chatservice.Controller;
 
 import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.UserRepository;

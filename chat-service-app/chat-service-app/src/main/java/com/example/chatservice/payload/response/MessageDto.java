@@ -1,5 +1,4 @@
-// Create a new file: MessageDto.java
-package com.example.chatservice.web; // Or a similar package
+package com.example.chatservice.payload.response;
 
 import com.example.chatservice.domain.User;
 import java.time.Instant;

@@ -55,11 +55,13 @@ public class ChatMessagingController {
                                         .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
                         System.out.println("🔄 Saving message to DB...");
-                        messageService.saveEncrypted(roomId, username, payload.text());
-                        System.out.println("✅ Message saved to database");
+                        com.example.chatservice.domain.Message savedMessage = messageService.saveEncrypted(roomId,
+                                        username, payload.text());
+                        System.out.println("✅ Message saved to database: " + savedMessage.getId());
 
                         Map<String, Object> messageEvent = Map.of(
                                         "type", "MESSAGE",
+                                        "id", savedMessage.getId(),
                                         "roomId", roomId,
                                         "sender", Map.of(
                                                         "username", username,

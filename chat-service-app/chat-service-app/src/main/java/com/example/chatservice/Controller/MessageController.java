@@ -1,5 +1,6 @@
-package com.example.chatservice.web;
+package com.example.chatservice.Controller;
 
+import com.example.chatservice.payload.response.MessageDto;
 import com.example.chatservice.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

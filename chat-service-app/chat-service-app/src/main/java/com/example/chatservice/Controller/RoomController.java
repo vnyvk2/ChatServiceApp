@@ -1,5 +1,5 @@
 // Updated RoomController.java
-package com.example.chatservice.web;
+package com.example.chatservice.Controller;
 
 import com.example.chatservice.domain.ChatRoom;
 import com.example.chatservice.domain.RoomMembership;

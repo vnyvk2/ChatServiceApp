@@ -47,10 +47,13 @@
 
         <div class="main-content">
             <div class="chat-header">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <h2 id="current-room-name">Select a room</h2>
-                    <button id="rename-room-btn" class="edit-btn hidden" title="Rename Room"><i
-                            class="fas fa-pen"></i></button>
+                <div style="display: flex; flex-direction: column; justify-content: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <h2 id="current-room-name" style="margin: 0; line-height: 1;">Select a room</h2>
+                        <button id="rename-room-btn" class="edit-btn hidden" title="Rename Room"><i
+                                class="fas fa-pen"></i></button>
+                    </div>
+                    <div id="room-status-indicator" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;"></div>
                 </div>
                 <div class="header-actions">
                     <button class="btn-ghost" id="show-members-btn" onclick="toggleMembers()" class="hidden"><i

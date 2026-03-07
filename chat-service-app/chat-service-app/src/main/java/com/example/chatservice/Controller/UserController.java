@@ -1,4 +1,4 @@
-package com.example.chatservice.web;
+package com.example.chatservice.Controller;
 
 import com.example.chatservice.domain.User;
 import com.example.chatservice.repository.UserRepository;
@@ -9,6 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -28,26 +32,29 @@ public class UserController {
         this.userRepository = userRepository;
     }
 
+
     @GetMapping("/search")
-    @Operation(summary = "Search users", description = "Searches for a user by username, email, or phone number.")
+    @Operation(summary = "Search users", description = "Searches for a user by username, email, or phone number with pagination.")
     public ResponseEntity<?> searchUsers(
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String email,
-            @RequestParam(required = false) String phone) {
+            @RequestParam(required = false) String phone,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
         if (username != null) {
-            return userService.findByUsername(username)
-                    .map(u -> ResponseEntity.ok((Object) u))
-                    .orElse(ResponseEntity.notFound().build());
+            Page<User> result = userService.searchByUsername(username, pageable);
+            return ResponseEntity.ok(result);
         }
         if (email != null) {
-            return userService.findByEmail(email)
-                    .map(u -> ResponseEntity.ok((Object) u))
-                    .orElse(ResponseEntity.notFound().build());
+            Page<User> result = userService.searchByEmail(email, pageable);
+            return ResponseEntity.ok(result);
         }
         if (phone != null) {
-            return userService.findByPhoneNumber(phone)
-                    .map(u -> ResponseEntity.ok((Object) u))
-                    .orElse(ResponseEntity.notFound().build());
+            Page<User> result = userService.searchByPhoneNumber(phone, pageable);
+            return ResponseEntity.ok(result);
         }
         return ResponseEntity.badRequest().body(Map.of("error", "Provide username, email, or phone"));
     }
@@ -79,23 +86,23 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    @GetMapping("/{identifier}")
+    @GetMapping("/{id}")
     @Operation(summary = "Get user by ID or username", description = "Fetches a single user by their MongoDB ID or username.")
-    public ResponseEntity<?> getUserByIdentifier(@PathVariable String identifier) {
-        Optional<User> user = userService.findByIdOrUsername(identifier);
+    public ResponseEntity<?> getUserByIdentifier(@PathVariable String id) {
+        Optional<User> user = userService.findByIdOrUsername(id);
         if (user.isPresent()) {
             return ResponseEntity.ok(user.get());
         }
         return ResponseEntity.notFound().build();
     }
 
-    @PutMapping("/{identifier}")
+    @PutMapping("/{id}")
     @Operation(summary = "Edit user by ID or username", description = "Updates user information. The identifier can be a MongoDB ObjectId or username.")
     public ResponseEntity<?> updateUser(
-            @PathVariable String identifier,
+            @PathVariable String id,
             @RequestBody Map<String, String> updates) {
         try {
-            Optional<User> userOpt = userService.findByIdOrUsername(identifier);
+            Optional<User> userOpt = userService.findByIdOrUsername(id);
             if (userOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
@@ -110,11 +117,11 @@ public class UserController {
         }
     }
 
-    @DeleteMapping("/{identifier}")
+    @DeleteMapping("/{id}")
     @Operation(summary = "Delete user by ID or username", description = "Deletes a user by their MongoDB ObjectId or username.")
-    public ResponseEntity<?> deleteUser(@PathVariable String identifier) {
+    public ResponseEntity<?> deleteUser(@PathVariable String id) {
         try {
-            userService.deleteByIdOrUsername(identifier);
+            userService.deleteByIdOrUsername(id);
             return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();

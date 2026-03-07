@@ -1,6 +1,8 @@
 package com.example.chatservice.service;
 
 import com.example.chatservice.domain.User;
+import com.example.chatservice.exception.DuplicateResourceException;
+import com.example.chatservice.exception.ResourceNotFoundException;
 import com.example.chatservice.repository.UserRepository;
 import org.springframework.lang.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +10,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -32,13 +36,13 @@ public class UserService {
     public User registerUser(String username, String rawPassword, String displayName, String email,
             String phoneNumber) {
         if (userRepository.existsByUsername(username)) {
-            throw new RuntimeException("Username already exists");
+            throw new DuplicateResourceException("Username already exists");
         }
         if (email != null && userRepository.existsByEmail(email)) {
-            throw new RuntimeException("Email already in use");
+            throw new DuplicateResourceException("Email already in use");
         }
         if (phoneNumber != null && !phoneNumber.isBlank() && userRepository.existsByPhoneNumber(phoneNumber)) {
-            throw new RuntimeException("Phone number already in use");
+            throw new DuplicateResourceException("Phone number already in use");
         }
 
         User user = new User();
@@ -53,13 +57,26 @@ public class UserService {
 
     public User authenticate(String username, String rawPassword) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid username or password"));
 
         if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
             throw new RuntimeException("Invalid username or password");
         }
 
         return user;
+    }
+
+    // ---- Paginated Search Methods ----
+    public Page<User> searchByUsername(String username, Pageable pageable) {
+        return userRepository.findByUsernameContainingIgnoreCase(username, pageable);
+    }
+
+    public Page<User> searchByEmail(String email, Pageable pageable) {
+        return userRepository.findByEmailContainingIgnoreCase(email, pageable);
+    }
+
+    public Page<User> searchByPhoneNumber(String phoneNumber, Pageable pageable) {
+        return userRepository.findByPhoneNumberContainingIgnoreCase(phoneNumber, pageable);
     }
 
     // ---- Existing methods ----
@@ -136,11 +153,11 @@ public class UserService {
 
     public User updateUserProfile(String userId, String username, String phoneNumber, String email) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (username != null && !username.isBlank() && !user.getUsername().equals(username)) {
             if (userRepository.existsByUsername(username)) {
-                throw new RuntimeException("Username already taken");
+                throw new DuplicateResourceException("Username already taken");
             }
             user.setUsername(username);
             user.setDisplayName(username);
@@ -148,14 +165,14 @@ public class UserService {
 
         if (phoneNumber != null && !phoneNumber.isBlank() && !phoneNumber.equals(user.getPhoneNumber())) {
             if (userRepository.existsByPhoneNumber(phoneNumber)) {
-                throw new RuntimeException("Phone number already taken");
+                throw new DuplicateResourceException("Phone number already taken");
             }
             user.setPhoneNumber(phoneNumber);
         }
 
         if (email != null && !email.isBlank() && !email.equals(user.getEmail())) {
             if (userRepository.existsByEmail(email)) {
-                throw new RuntimeException("Email already taken");
+                throw new DuplicateResourceException("Email already taken");
             }
             user.setEmail(email);
         }
@@ -182,7 +199,7 @@ public class UserService {
         if (user.isPresent()) {
             userRepository.delete(user.get());
         } else {
-            throw new RuntimeException("User not found with identifier: " + identifier);
+            throw new ResourceNotFoundException("User not found with identifier: " + identifier);
         }
     }
 }

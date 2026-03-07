@@ -528,6 +528,20 @@ class ChatApp {
 
         membersCount.textContent = `${members.length} member${members.length !== 1 ? 's' : ''}`;
 
+        const statusIndicator = document.getElementById('room-status-indicator');
+        if (this.currentRoomType === 'DIRECT_MESSAGE') {
+            const otherMember = members.find(m => m.username !== this.currentUser.username);
+            if (otherMember && statusIndicator) {
+                 if (otherMember.status === 'ONLINE') {
+                     statusIndicator.textContent = 'Online';
+                 } else {
+                     statusIndicator.textContent = 'Offline'; 
+                 }
+            }
+        } else {
+             if (statusIndicator) statusIndicator.textContent = '';
+        }
+
         onlineUsers.innerHTML = '';
         members.forEach(member => {
             const memberElement = document.createElement('div');
@@ -598,8 +612,17 @@ class ChatApp {
     }
 
     displayMessage(messageData, animate = true) {
+        // Deduplicate based on ID if available
+        if (messageData.id && document.getElementById('msg-' + messageData.id)) {
+            console.log('Duplicate message ignored:', messageData.id);
+            return;
+        }
+
         const messageArea = document.getElementById('chat-messages');
         const messageElement = document.createElement('div');
+        if (messageData.id) {
+            messageElement.id = 'msg-' + messageData.id;
+        }
 
         const isOwnMessage = messageData.sender.username === this.currentUser.username;
         messageElement.className = `message ${isOwnMessage ? 'own' : ''}`;
@@ -647,19 +670,30 @@ class ChatApp {
     }
 
     displayEvent(event) {
-        const messageArea = document.getElementById('chat-messages');
-        const eventElement = document.createElement('div');
-        eventElement.className = 'system-message';
-
         const timestamp = new Date(event.timestamp).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit'
         });
 
-        eventElement.innerHTML = `${this.escapeHtml(event.message)} <span style="font-size: 0.8em; opacity: 0.7;">${timestamp}</span>`;
-        messageArea.appendChild(eventElement);
+        if (event.type === 'STATUS_UPDATE') {
+            const statusIndicator = document.getElementById('room-status-indicator');
+            if (statusIndicator && event.user.username !== this.currentUser.username) {
+                if (event.user.status === 'ONLINE') {
+                    statusIndicator.textContent = 'Online';
+                } else {
+                    statusIndicator.textContent = 'Last seen at ' + timestamp;
+                }
+            }
+        } else {
+            const messageArea = document.getElementById('chat-messages');
+            const eventElement = document.createElement('div');
+            eventElement.className = 'system-message';
 
-        this.scrollToBottom();
+            eventElement.innerHTML = `${this.escapeHtml(event.message || '')} <span style="font-size: 0.8em; opacity: 0.7;">${timestamp}</span>`;
+            messageArea.appendChild(eventElement);
+
+            this.scrollToBottom();
+        }
 
         // Refresh member list if needed
         if (event.type === 'USER_JOINED' || event.type === 'USER_LEFT') {
