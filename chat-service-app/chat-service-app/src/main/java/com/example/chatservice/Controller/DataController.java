@@ -1,8 +1,8 @@
 package com.example.chatservice.Controller;
 
-import com.example.chatservice.domain.DataEntity;
-import com.example.chatservice.payload.request.DataRequest;
-import com.example.chatservice.payload.response.DataResponse;
+import com.example.chatservice.Model.DataEntity;
+import com.example.chatservice.Dto.request.DataRequest;
+import com.example.chatservice.Dto.response.DataResponse;
 import com.example.chatservice.service.DataService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

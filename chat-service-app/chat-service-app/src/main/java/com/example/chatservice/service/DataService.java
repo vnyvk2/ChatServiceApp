@@ -1,7 +1,7 @@
 package com.example.chatservice.service;
 
-import com.example.chatservice.domain.DataEntity;
-import com.example.chatservice.payload.request.DataRequest;
+import com.example.chatservice.Model.DataEntity;
+import com.example.chatservice.Dto.request.DataRequest;
 import com.example.chatservice.repository.DataRepository;
 import org.springframework.stereotype.Service;
 

@@ -1,6 +1,6 @@
 package com.example.chatservice.service;
 
-import com.example.chatservice.domain.User;
+import com.example.chatservice.Model.User;
 import com.example.chatservice.exception.DuplicateResourceException;
 import com.example.chatservice.exception.ResourceNotFoundException;
 import com.example.chatservice.repository.UserRepository;

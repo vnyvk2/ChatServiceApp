@@ -1,8 +1,8 @@
 package com.example.chatservice.service;
 
-import com.example.chatservice.domain.ChatRoom;
-import com.example.chatservice.domain.Message;
-import com.example.chatservice.domain.User;
+import com.example.chatservice.Model.ChatRoom;
+import com.example.chatservice.Model.Message;
+import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.ChatRoomRepository;
 import com.example.chatservice.repository.MessageRepository;
 import com.example.chatservice.repository.UserRepository;

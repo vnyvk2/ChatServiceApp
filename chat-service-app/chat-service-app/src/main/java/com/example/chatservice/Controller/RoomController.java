@@ -1,9 +1,9 @@
 // Updated RoomController.java
 package com.example.chatservice.Controller;
 
-import com.example.chatservice.domain.ChatRoom;
-import com.example.chatservice.domain.RoomMembership;
-import com.example.chatservice.domain.User;
+import com.example.chatservice.Model.ChatRoom;
+import com.example.chatservice.Model.RoomMembership;
+import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.service.ChatRoomService;
 import jakarta.validation.Valid;

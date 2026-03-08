@@ -1,6 +1,6 @@
 package com.example.chatservice.websocket;
 
-import com.example.chatservice.domain.User;
+import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.service.ChatRoomService;
 import com.example.chatservice.service.MessageService;
@@ -55,7 +55,7 @@ public class ChatMessagingController {
                                         .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
                         System.out.println("🔄 Saving message to DB...");
-                        com.example.chatservice.domain.Message savedMessage = messageService.saveEncrypted(roomId,
+                        com.example.chatservice.Model.Message savedMessage = messageService.saveEncrypted(roomId,
                                         username, payload.text());
                         System.out.println("✅ Message saved to database: " + savedMessage.getId());
 

@@ -1,6 +1,6 @@
 package com.example.chatservice.repository;
 
-import com.example.chatservice.domain.RoomMembership;
+import com.example.chatservice.Model.RoomMembership;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 

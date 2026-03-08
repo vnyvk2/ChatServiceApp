@@ -1,6 +1,6 @@
 package com.example.chatservice.Controller;
 
-import com.example.chatservice.payload.response.MessageDto;
+import com.example.chatservice.Dto.response.MessageDto;
 import com.example.chatservice.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +26,7 @@ public class MessageController {
             @PathVariable String roomId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        org.springframework.data.domain.Page<com.example.chatservice.domain.Message> messages = messageService
+        org.springframework.data.domain.Page<com.example.chatservice.Model.Message> messages = messageService
                 .getMessages(roomId, page, size);
         org.springframework.data.domain.Page<MessageDto> dtos = messages.map(msg -> new MessageDto(
                 msg.getId(),

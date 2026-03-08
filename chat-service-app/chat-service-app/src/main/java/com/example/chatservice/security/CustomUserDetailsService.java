@@ -1,6 +1,6 @@
 package com.example.chatservice.security;
 
-import com.example.chatservice.domain.User;
+import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.UserRepository;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

@@ -1,6 +1,6 @@
 package com.example.chatservice.Controller;
 
-import com.example.chatservice.domain.User;
+import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;

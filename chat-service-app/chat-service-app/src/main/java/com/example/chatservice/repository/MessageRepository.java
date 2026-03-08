@@ -1,6 +1,6 @@
 package com.example.chatservice.repository;
 
-import com.example.chatservice.domain.Message;
+import com.example.chatservice.Model.Message;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
