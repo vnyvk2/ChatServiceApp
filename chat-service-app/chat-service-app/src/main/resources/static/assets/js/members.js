@@ -81,7 +81,7 @@ export function displayRoomMembers(app, data) {
         }
     }
 
-    // Admin Room Mute Toggle
+    // Admin Room Mute Toggle & Rename Option
     let roomMuteToggleHtml = '';
     if (app.currentRoomType === 'GROUP_CHAT' && amIAdmin) {
         roomMuteToggleHtml = `
@@ -91,6 +91,11 @@ export function displayRoomMembers(app, data) {
                     <input type="checkbox" id="mute-room-toggle" ${allMembersMuted ? 'checked' : ''} onchange="chatApp.toggleRoomMute()">
                     <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px;"></span>
                 </label>
+            </div>
+            <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center;">
+                <button onclick="chatApp.showRenameRoom()" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-light); background: white; cursor: pointer; width: 100%;">
+                    <i class="fas fa-pen"></i> Rename Group
+                </button>
             </div>
         `;
     }

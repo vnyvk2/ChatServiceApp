@@ -149,6 +149,24 @@ export function displayEvent(app, event) {
             }
         }
     } else {
+        if (event.adminOnly) {
+            // Check if current user is admin to decide whether to show this event
+            const isGroupChat = app.currentRoomType === 'GROUP_CHAT';
+            let amIAdmin = false;
+            if (isGroupChat && event.roomId) {
+                // If we know the room and have members loaded, check role
+                const membersCount = document.getElementById('room-members-count');
+                if (membersCount) {
+                    // Quick UI check: if we have the mute toggle, we are admin in this room
+                    amIAdmin = !!document.getElementById('mute-room-toggle');
+                }
+            }
+            if (!amIAdmin) {
+                // Return early, do not display this message
+                return;
+            }
+        }
+
         const messageArea = document.getElementById('chat-messages');
         const eventElement = document.createElement('div');
         eventElement.className = 'system-message';

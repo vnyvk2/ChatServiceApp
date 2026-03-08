@@ -94,7 +94,7 @@ public class RoomController {
                 "user", Map.of(
                         "username", user.getUsername(),
                         "displayName", user.getDisplayName()),
-                "message", user.getDisplayName() + " joined the room",
+                "message", user.getDisplayName() + " joined the group",
                 "timestamp", System.currentTimeMillis());
         messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", joinEvent);
 
@@ -118,7 +118,8 @@ public class RoomController {
                 "user", Map.of(
                         "username", user.getUsername(),
                         "displayName", user.getDisplayName()),
-                "message", user.getDisplayName() + " left the room",
+                "message", user.getDisplayName() + " left the group",
+                "adminOnly", true, // Indicate that this message is for admins only
                 "timestamp", System.currentTimeMillis());
         messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", leaveEvent);
 
@@ -261,10 +262,12 @@ public class RoomController {
             chatRoomService.removeMemberAsAdmin(roomId, userId, admin.getId());
             
             // Broadcast a kick event so the kicked user's UI can react
+            User kickedUser = userRepository.findById(userId).orElseThrow();
             Map<String, Object> kickEvent = Map.of(
                 "type", "USER_KICKED",
                 "roomId", roomId,
                 "userId", userId,
+                "message", admin.getDisplayName() + " kicked " + kickedUser.getDisplayName(),
                 "timestamp", System.currentTimeMillis()
             );
             messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", kickEvent);
@@ -313,6 +316,7 @@ public class RoomController {
                 "type", "ROOM_MUTE_TOGGLED",
                 "roomId", roomId,
                 "allMembersMuted", updated.isAllMembersMuted(),
+                "message", admin.getDisplayName() + (updated.isAllMembersMuted() ? " has muted the group" : " has unmuted the group"),
                 "timestamp", System.currentTimeMillis()
             );
             messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", event);
