@@ -30,6 +30,9 @@ public class ChatRoom {
     private ChatRoom.RoomType roomType = RoomType.GROUP_CHAT;
 
     private boolean isPrivate = false;
+    
+    // Indicates if only admins can send messages
+    private boolean allMembersMuted = false;
 
     @DBRef
     @JsonIgnoreProperties({ "passwordHash", "roles", "email", "lastSeenAt", "createdAt", "updatedAt" })
@@ -109,5 +112,13 @@ public class ChatRoom {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public boolean isAllMembersMuted() {
+        return allMembersMuted;
+    }
+
+    public void setAllMembersMuted(boolean allMembersMuted) {
+        this.allMembersMuted = allMembersMuted;
     }
 }

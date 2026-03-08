@@ -231,14 +231,96 @@ public class RoomController {
         if (members == null) {
             return ResponseEntity.status(404).body(Map.of("error", "Room not found"));
         }
-        return ResponseEntity.ok(members.stream().map(membership -> Map.of(
+        
+        ChatRoom room = chatRoomService.findRoomById(roomId).orElse(null);
+        boolean roomMuted = room != null && room.isAllMembersMuted();
+
+        return ResponseEntity.ok(Map.of(
+            "allMembersMuted", roomMuted,
+            "members", members.stream().map(membership -> Map.of(
+                "id", membership.getUser().getId(),
                 "username", membership.getUser().getUsername(),
                 "displayName", membership.getUser().getDisplayName(),
                 "status", membership.getUser().getStatus(),
                 "phoneNumber", membership.getUser().getPhoneNumber() != null ? membership.getUser().getPhoneNumber() : "",
-                "lastSeenAt", membership.getUser().getLastSeenAt(),
+                "lastSeenAt", membership.getUser().getLastSeenAt() != null ? membership.getUser().getLastSeenAt() : "",
                 "role", membership.getRole(),
-                "joinedAt", membership.getJoinedAt())).toList());
+                "canSendMessages", membership.isCanSendMessages(),
+                "joinedAt", membership.getJoinedAt())).toList()
+        ));
+    }
+
+    // --- Admin Endpoints ---
+
+    @PutMapping("/{roomId}/members/{userId}/remove")
+    @Operation(summary = "Remove a member", description = "Allows an admin to remove a member from the room.")
+    public ResponseEntity<?> removeMember(@PathVariable String roomId, @PathVariable String userId, @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        try {
+            User admin = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            chatRoomService.removeMemberAsAdmin(roomId, userId, admin.getId());
+            
+            // Broadcast a kick event so the kicked user's UI can react
+            Map<String, Object> kickEvent = Map.of(
+                "type", "USER_KICKED",
+                "roomId", roomId,
+                "userId", userId,
+                "timestamp", System.currentTimeMillis()
+            );
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", kickEvent);
+
+            return ResponseEntity.ok(Map.of("message", "Member removed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{roomId}/members/{userId}/mute")
+    @Operation(summary = "Mute/Unmute a member", description = "Allows an admin to toggle a member's ability to send messages.")
+    public ResponseEntity<?> toggleMemberMute(@PathVariable String roomId, @PathVariable String userId, @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        try {
+            User admin = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            RoomMembership updated = chatRoomService.toggleMemberMute(roomId, userId, admin.getId());
+            return ResponseEntity.ok(Map.of("message", "Member mute status toggled", "canSendMessages", updated.isCanSendMessages()));
+        } catch (Exception e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{roomId}/members/{userId}/admin")
+    @Operation(summary = "Promote/Demote admin", description = "Allows an admin to promote or demote another member.")
+    public ResponseEntity<?> toggleAdminRole(@PathVariable String roomId, @PathVariable String userId, @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        try {
+            User admin = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            RoomMembership updated = chatRoomService.toggleAdminRole(roomId, userId, admin.getId());
+            return ResponseEntity.ok(Map.of("message", "Admin role toggled", "role", updated.getRole()));
+        } catch (Exception e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{roomId}/mute")
+    @Operation(summary = "Mute/Unmute room", description = "Allows an admin to restrict messaging to admins only.")
+    public ResponseEntity<?> toggleRoomMute(@PathVariable String roomId, @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        try {
+            User admin = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            ChatRoom updated = chatRoomService.toggleRoomMute(roomId, admin.getId());
+            
+            Map<String, Object> event = Map.of(
+                "type", "ROOM_MUTE_TOGGLED",
+                "roomId", roomId,
+                "allMembersMuted", updated.isAllMembersMuted(),
+                "timestamp", System.currentTimeMillis()
+            );
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", event);
+
+            return ResponseEntity.ok(Map.of("message", "Room mute toggled", "allMembersMuted", updated.isAllMembersMuted()));
+        } catch (Exception e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/create-with-options")

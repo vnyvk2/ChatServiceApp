@@ -243,4 +243,61 @@ public class ChatRoomService {
                 .filter(room -> room.getCreatedBy() != null && room.getCreatedBy().getId().equals(userId))
                 .toList();
     }
+
+    // --- Admin Feature Methods ---
+
+    public void removeMemberAsAdmin(String roomId, String targetUserId, String adminUserId) {
+        if (!isUserRoomAdmin(adminUserId, roomId)) {
+            throw new RuntimeException("Only admins can remove members");
+        }
+        removeMember(roomId, targetUserId);
+    }
+
+    public RoomMembership toggleMemberMute(String roomId, String targetUserId, String adminUserId) {
+        if (!isUserRoomAdmin(adminUserId, roomId)) {
+            throw new RuntimeException("Only admins can mute members");
+        }
+        RoomMembership membership = membershipRepository.findByRoomIdAndUserId(roomId, targetUserId)
+                .orElseThrow(() -> new RuntimeException("Membership not found"));
+        
+        membership.setCanSendMessages(!membership.isCanSendMessages());
+        return membershipRepository.save(membership);
+    }
+
+    public ChatRoom toggleRoomMute(String roomId, String adminUserId) {
+        if (!isUserRoomAdmin(adminUserId, roomId)) {
+            throw new RuntimeException("Only admins can mute the room");
+        }
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+        
+        room.setAllMembersMuted(!room.isAllMembersMuted());
+        return chatRoomRepository.save(room);
+    }
+
+    public RoomMembership toggleAdminRole(String roomId, String targetUserId, String adminUserId) {
+        if (!isUserRoomAdmin(adminUserId, roomId)) {
+            throw new RuntimeException("Only admins can change roles");
+        }
+        
+        RoomMembership targetMembership = membershipRepository.findByRoomIdAndUserId(roomId, targetUserId)
+                .orElseThrow(() -> new RuntimeException("Target membership not found"));
+        
+        if (targetMembership.getRole() == RoomMembership.Role.ADMIN) {
+            // Cannot demote if they are the only admin
+            long adminCount = membershipRepository.findByRoomIdAndIsActiveTrue(roomId).stream()
+                    .filter(m -> m.getRole() == RoomMembership.Role.ADMIN)
+                    .count();
+            if (adminCount <= 1) {
+                throw new RuntimeException("Cannot demote the only admin in the room");
+            }
+            targetMembership.setRole(RoomMembership.Role.MEMBER);
+        } else {
+            targetMembership.setRole(RoomMembership.Role.ADMIN);
+            // Additionally, if promoted to admin, ensure they are unmuted
+            targetMembership.setCanSendMessages(true);
+        }
+        
+        return membershipRepository.save(targetMembership);
+    }
 }

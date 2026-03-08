@@ -54,6 +54,24 @@ public class ChatMessagingController {
                         User sender = userRepository.findByUsername(username)
                                         .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
+                        // Enforce messaging restrictions
+                        var membershipOpt = chatRoomService.getMembership(sender.getId(), roomId);
+                        if (membershipOpt.isPresent()) {
+                            var membership = membershipOpt.get();
+                            var room = membership.getRoom();
+                            
+                            if (!membership.isCanSendMessages()) {
+                                throw new RuntimeException("You have been muted in this room.");
+                            }
+                            
+                            if (room.isAllMembersMuted() && membership.getRole() != com.example.chatservice.Model.RoomMembership.Role.ADMIN) {
+                                throw new RuntimeException("This room is currently restricted to announcements only.");
+                            }
+                        } else if (chatRoomService.findRoomById(roomId).map(r -> r.getRoomType() != com.example.chatservice.Model.ChatRoom.RoomType.GROUP_CHAT).orElse(false)) {
+                            // If they have no membership but the room exists, they shouldn't send messages
+                            throw new RuntimeException("You are not a member of this room.");
+                        }
+
                         System.out.println("🔄 Saving message to DB...");
                         com.example.chatservice.Model.Message savedMessage = messageService.saveEncrypted(roomId,
                                         username, payload.text());

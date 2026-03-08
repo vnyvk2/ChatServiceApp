@@ -39,6 +39,9 @@ public class RoomMembership {
     private Role role = Role.MEMBER;
 
     private boolean isActive = true;
+    
+    // Indicates if the member is allowed to send messages in the room
+    private boolean canSendMessages = true;
 
     @CreatedDate
     private Instant joinedAt;
@@ -109,5 +112,13 @@ public class RoomMembership {
 
     public Instant getLeftAt() {
         return leftAt;
+    }
+
+    public boolean isCanSendMessages() {
+        return canSendMessages;
+    }
+
+    public void setCanSendMessages(boolean canSendMessages) {
+        this.canSendMessages = canSendMessages;
     }
 }

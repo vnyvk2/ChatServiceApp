@@ -45,50 +45,56 @@
             <div id="room-list"></div>
         </div>
 
-        <div class="main-content">
+        <div class="main-content" style="display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden;">
             <div class="chat-header">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div style="display: flex; flex-direction: column; justify-content: center;">
-                        <h2 id="current-room-name" style="margin: 0; line-height: 1;">Select a room</h2>
-                        <div id="room-status-indicator" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;"></div>
+                <!-- Left side: clickable room info (acts like the profile button) -->
+                <button id="chat-header-room-btn" class="profile-btn" style="display: flex; align-items: center; gap: 0.75rem; text-align: left; max-width: 60%; background: none; border: none; cursor: pointer; padding: 0.5rem 0.75rem; border-radius: 8px; transition: background 0.2s;" title="Room Info / Members">
+                    <div class="avatar" id="chat-header-avatar" style="width: 40px; height: 40px; flex-shrink: 0;"><i class="fas fa-users"></i></div>
+                    <div style="display: flex; flex-direction: column; justify-content: center; min-width: 0;">
+                        <h2 id="current-room-name" style="margin: 0; line-height: 1.2; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Select a room</h2>
+                        <div id="room-status-indicator" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem;">Click to see details</div>
                     </div>
-                    <button id="chat-header-info-btn" class="edit-btn" title="View User Details" style="font-size: 1rem; color: var(--primary); display: none; margin-left: auto; padding: 0.5rem; background: #e0f2fe; border-radius: 4px; border: 1px solid var(--primary); cursor: pointer;"><i class="fas fa-info-circle"></i> View Profile</button>
-                    <button id="rename-room-btn" class="edit-btn" title="Rename Group Chat" style="display: none; margin-left: auto; padding: 0.5rem; background: #f1f5f9; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer;"><i class="fas fa-pen"></i> Rename Chat</button>
-                </div>
+                </button>
+
+                <!-- Right side: action buttons -->
                 <div class="header-actions">
-                    <button class="btn-ghost" id="show-members-btn" onclick="toggleMembers()" class="hidden"><i
-                            class="fas fa-users"></i></button>
+                    <!-- Rename button (Group chats only) -->
+                    <button id="rename-room-btn" class="btn-ghost" title="Rename Group" style="display: none;">
+                        <i class="fas fa-pen"></i> Rename
+                    </button>
+                    <!-- DM View Profile button -->
+                    <button id="chat-header-info-btn" class="btn-ghost" title="View User Profile" style="display: none; color: var(--primary); background: #e0f2fe; border: 1px solid var(--primary);">
+                        <i class="fas fa-info-circle"></i> View Profile
+                    </button>
                 </div>
             </div>
 
-            <div id="chat-messages">
-                <div class="welcome-message">
-                    <i class="fas fa-comments"></i>
-                    <h3>Welcome to ChatService</h3>
-                    <p>Select a room or start a conversation</p>
+            <div style="display: flex; flex: 1; overflow: hidden;">
+                <!-- Chat Area -->
+                <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
+                    <div id="chat-messages">
+                        <div class="welcome-message">
+                            <i class="fas fa-comments"></i>
+                            <h3>Welcome to ChatService</h3>
+                            <p>Select a room or start a conversation</p>
+                        </div>
+                    </div>
+                    <div id="typing-indicator" class="hidden"></div>
+                    <div id="chat-input-area" class="hidden">
+                        <input type="text" id="message-input" placeholder="Type a message...">
+                        <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+
+                <!-- Members Panel (hidden by default) -->
+                <div id="members-panel" class="hidden"
+                    style="border-left: 1px solid var(--border-light); width: 280px; flex-shrink: 0; background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%); display: flex; flex-direction: column; overflow-y: auto;">
+                    <h3 style="padding: 1.25rem 1.25rem 0.5rem 1.25rem; font-size: 0.9rem; margin: 0; border-bottom: 1px solid var(--border-light);">Room Members (<span id="room-members-count">0</span>)</h3>
+                    <div id="online-users" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;"></div>
                 </div>
             </div>
-            <div id="typing-indicator" class="hidden"></div>
-            <div id="chat-input-area" class="hidden">
-                <input type="text" id="message-input" placeholder="Type a message...">
-                <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </div>
-
-        <!-- Members (hidden by default, can be toggled or styled as modal/pop-out) -->
-        <div id="members-panel" class="sidebar hidden"
-            style="border-left: 1px solid var(--border-light); border-right: none;">
-            <h3>Room Members (<span id="room-members-count">0</span>)</h3>
-            <div id="online-users"></div>
         </div>
     </div>
-
-    <script>
-        function toggleMembers() {
-            const panel = document.getElementById('members-panel');
-            if (panel) panel.classList.toggle('hidden');
-        }
-    </script>
 
     <!-- Modals -->
     <div id="modal-overlay" class="hidden"></div>
@@ -183,7 +189,7 @@
             window.location.href = '/index.html';
         }
     </script>
-    <script src="assets/js/app.js?v=8"></script>
+    <script type="module" src="assets/js/app.js?v=9"></script>
 </body>
 
 </html>
