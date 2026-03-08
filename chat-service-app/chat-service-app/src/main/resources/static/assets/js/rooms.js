@@ -131,7 +131,6 @@ export async function selectRoom(app, roomId, roomName, roomType, e = null) {
     const headerAvatar    = document.getElementById('chat-header-avatar');
     const statusIndicator = document.getElementById('room-status-indicator');
     const renameBtn       = document.getElementById('rename-room-btn');
-    const infoBtn         = document.getElementById('chat-header-info-btn');
     const membersPanel    = document.getElementById('members-panel');
 
     if (roomType === 'DIRECT_MESSAGE') {
@@ -150,8 +149,7 @@ export async function selectRoom(app, roomId, roomName, roomType, e = null) {
             };
         }
 
-        // Show Info button in header, hide rename
-        if (infoBtn)    infoBtn.style.display    = 'inline-flex';
+        // Hide rename button
         if (renameBtn)  renameBtn.style.display  = 'none';
 
         // Ensure members panel is closed for DMs
@@ -169,25 +167,13 @@ export async function selectRoom(app, roomId, roomName, roomType, e = null) {
             };
         }
 
-        // Show Rename button in header, hide Info (DM-only)
+        // Show Rename button in header (DM-only info hidden by default)
         if (renameBtn) renameBtn.style.display = 'inline-flex';
-        if (infoBtn)   infoBtn.style.display   = 'none';
     }
 
     // Wire Rename button
     if (renameBtn) {
         renameBtn.onclick = () => app.showRenameRoom();
-    }
-
-    // Wire DM Info button
-    if (infoBtn) {
-        infoBtn.onclick = () => {
-            if (app.currentRoomOtherMember) {
-                app._showUserDetailsModal(app.currentRoomOtherMember);
-            } else {
-                showToast('User details are still loading...', 'info');
-            }
-        };
     }
 
     document.getElementById('chat-input-area')?.classList.remove('hidden');

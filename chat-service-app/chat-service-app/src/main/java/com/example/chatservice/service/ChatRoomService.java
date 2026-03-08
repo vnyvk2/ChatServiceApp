@@ -250,6 +250,10 @@ public class ChatRoomService {
         if (!isUserRoomAdmin(adminUserId, roomId)) {
             throw new RuntimeException("Only admins can remove members");
         }
+        ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("Room not found"));
+        if (room.getCreatedBy() != null && room.getCreatedBy().getId().equals(targetUserId)) {
+            throw new RuntimeException("Cannot remove the room creator");
+        }
         removeMember(roomId, targetUserId);
     }
 
@@ -278,6 +282,11 @@ public class ChatRoomService {
     public RoomMembership toggleAdminRole(String roomId, String targetUserId, String adminUserId) {
         if (!isUserRoomAdmin(adminUserId, roomId)) {
             throw new RuntimeException("Only admins can change roles");
+        }
+        
+        ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("Room not found"));
+        if (room.getCreatedBy() != null && room.getCreatedBy().getId().equals(targetUserId)) {
+            throw new RuntimeException("Cannot change the admin role of the room creator");
         }
         
         RoomMembership targetMembership = membershipRepository.findByRoomIdAndUserId(roomId, targetUserId)
