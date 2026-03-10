@@ -3,6 +3,7 @@ package com.example.chatservice.websocket;
 import com.example.chatservice.Model.Message;
 import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.UserRepository;
+import com.example.chatservice.repository.RoomMembershipRepository;
 import com.example.chatservice.service.ChatRoomService;
 import com.example.chatservice.service.MessageService;
 import com.example.chatservice.service.UserService;
@@ -27,17 +28,20 @@ public class ChatMessagingController {
         private final ChatRoomService chatRoomService;
         private final UserService userService;
         private final UserRepository userRepository;
+        private final RoomMembershipRepository membershipRepository;
         private final SimpMessagingTemplate messagingTemplate;
 
         public ChatMessagingController(MessageService messageService,
                         ChatRoomService chatRoomService,
                         UserService userService,
                         UserRepository userRepository,
+                        RoomMembershipRepository membershipRepository,
                         SimpMessagingTemplate messagingTemplate) {
                 this.messageService = messageService;
                 this.chatRoomService = chatRoomService;
                 this.userService = userService;
                 this.userRepository = userRepository;
+                this.membershipRepository = membershipRepository;
                 this.messagingTemplate = messagingTemplate;
         }
 
@@ -95,6 +99,21 @@ public class ChatMessagingController {
                         System.out.println("📡 Broadcasting to /topic/rooms/" + roomId);
                         messagingTemplate.convertAndSend("/topic/rooms/" + roomId, messageEvent);
                         System.out.println("✅ Message broadcasted successfully");
+
+                        // Broadcast global notification for bubbling
+                        List<com.example.chatservice.Model.RoomMembership> members = membershipRepository.findByRoomIdAndIsActiveTrue(roomId);
+                        Map<String, Object> notificationEvent = new HashMap<>();
+                        notificationEvent.put("type", "NEW_MESSAGE");
+                        notificationEvent.put("roomId", roomId);
+                        notificationEvent.put("sender", sender.getDisplayName());
+                        notificationEvent.put("text", payload.text());
+                        notificationEvent.put("timestamp", System.currentTimeMillis());
+
+                        for (com.example.chatservice.Model.RoomMembership member : members) {
+                            if (!member.getUser().getUsername().equals(username)) {
+                                messagingTemplate.convertAndSendToUser(member.getUser().getUsername(), "/queue/notifications", notificationEvent);
+                            }
+                        }
                 } catch (Exception e) {
                         System.err.println("❌ Error in sendToRoom: " + e.getMessage());
                         e.printStackTrace();

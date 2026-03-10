@@ -190,7 +190,7 @@ export function displayMessage(app, messageData, animate = true) {
 /**
  * Move a room item to the top of the sidebar room list.
  */
-function bubbleRoomToTop(roomId) {
+export function bubbleRoomToTop(roomId) {
     const roomList = document.getElementById('room-list');
     if (!roomList) return;
 

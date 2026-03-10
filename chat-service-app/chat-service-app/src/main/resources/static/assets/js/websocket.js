@@ -2,6 +2,7 @@
  * WebSocket Module - Manages STOMP/WebSocket connection and subscriptions.
  */
 import { showToast } from './ui.js';
+import { bubbleRoomToTop } from './messages.js';
 
 /**
  * Connect to WebSocket server via SockJS + STOMP.
@@ -47,6 +48,17 @@ function onWebSocketConnected(app) {
         const error = JSON.parse(message.body);
         console.error('WebSocket error:', error);
         showToast('Error: ' + error.message, 'error');
+    });
+
+    // Subscribe to global notifications for incoming messages in unopened rooms
+    app.stompClient.subscribe('/user/queue/notifications', (message) => {
+        const notification = JSON.parse(message.body);
+        if (notification.type === 'NEW_MESSAGE') {
+            console.log('Got global notification for room: ' + notification.roomId);
+            if (notification.roomId !== app.currentRoom) {
+                bubbleRoomToTop(notification.roomId);
+            }
+        }
     });
 
     showToast('Connected successfully!', 'success');
