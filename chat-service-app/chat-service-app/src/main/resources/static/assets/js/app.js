@@ -13,12 +13,12 @@
  *   ui.js        - Toasts, modals, layout helpers, escapeHtml
  */
 
-import { login, register, logout, showLogin, showRegister } from './auth.js?v=10';
-import { connectWebSocket, updateUserStatus } from './websocket.js?v=10';
-import { loadMyRooms, loadAvailableRooms, selectRoom, createRoom, joinRoom, leaveRoom, startDirectMessage, renameRoom } from './rooms.js?v=10';
-import { loadMessages, displayMessage, displayEvent, displayTyping, sendMessage, handleTyping } from './messages.js?v=10';
-import { loadRoomMembers, removeMember, toggleMemberMute, toggleAdminRole, toggleRoomMute } from './members.js?v=10';
-import { showToast, closeModals, showModal, adjustLayout, escapeHtml } from './ui.js?v=10';
+import { login, register, logout, showLogin, showRegister } from './auth.js?v=11';
+import { connectWebSocket, updateUserStatus } from './websocket.js?v=11';
+import { loadMyRooms, loadAvailableRooms, selectRoom, createRoom, joinRoom, leaveRoom, startDirectMessage, renameRoom } from './rooms.js?v=11';
+import { loadMessages, displayMessage, displayEvent, displayTyping, sendMessage, handleTyping, sendDeliveryAck, sendSeenAck, updateMessageStatuses } from './messages.js?v=11';
+import { loadRoomMembers, removeMember, toggleMemberMute, toggleAdminRole, toggleRoomMute } from './members.js?v=11';
+import { showToast, closeModals, showModal, adjustLayout, escapeHtml } from './ui.js?v=11';
 
 class ChatApp {
     constructor() {
@@ -31,6 +31,7 @@ class ChatApp {
         this.typingTimer = null;
         this.isTyping = false;
         this.roomSubscriptions = [];
+        this.readReceiptsEnabled = true;
         this.init();
     }
 
@@ -96,6 +97,7 @@ class ChatApp {
         connectWebSocket(this);
         this.loadMyRooms();
         this.loadAvailableRooms();
+        this.fetchReadReceiptSetting();
     }
 
     // --- Rooms (delegates to rooms.js) ---
@@ -115,6 +117,9 @@ class ChatApp {
     displayTyping(typing) { return displayTyping(this, typing); }
     sendMessage() { return sendMessage(this); }
     handleTyping(isTyping) { return handleTyping(this, isTyping); }
+    sendDeliveryAck(roomId) { return sendDeliveryAck(this, roomId); }
+    sendSeenAck(roomId) { return sendSeenAck(this, roomId); }
+    updateMessageStatuses(msgIds, status) { return updateMessageStatuses(msgIds, status); }
 
     // --- Members (delegates to members.js) ---
     loadRoomMembers(roomId) { return loadRoomMembers(this, roomId); }
@@ -151,7 +156,52 @@ class ChatApp {
         document.getElementById('profile-username').value = this.currentUser.username || '';
         document.getElementById('profile-phone').value = this.currentUser.phoneNumber || '';
         document.getElementById('profile-email').value = this.currentUser.email || '';
+        const readReceiptsToggle = document.getElementById('read-receipts-toggle');
+        if (readReceiptsToggle) {
+            readReceiptsToggle.checked = this.readReceiptsEnabled;
+        }
         showModal('profile-modal');
+    }
+
+    async fetchReadReceiptSetting() {
+        try {
+            const response = await fetch('/api/users/read-receipts', {
+                headers: { 'Authorization': 'Bearer ' + this.token }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                this.readReceiptsEnabled = data.readReceiptsEnabled;
+            }
+        } catch (e) {
+            console.error('Error fetching read receipt setting:', e);
+        }
+    }
+
+    async toggleReadReceipts() {
+        const toggle = document.getElementById('read-receipts-toggle');
+        const enabled = toggle ? toggle.checked : true;
+        try {
+            const response = await fetch('/api/users/read-receipts', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + this.token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ readReceiptsEnabled: enabled })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                this.readReceiptsEnabled = data.readReceiptsEnabled;
+                showToast(enabled ? 'Read receipts enabled' : 'Read receipts disabled', 'success');
+            } else {
+                showToast('Failed to update setting', 'error');
+                if (toggle) toggle.checked = !enabled;
+            }
+        } catch (e) {
+            console.error('Error toggling read receipts:', e);
+            showToast('Network error', 'error');
+            if (toggle) toggle.checked = !enabled;
+        }
     }
 
     async saveProfile() {
@@ -297,6 +347,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     messageInput?.addEventListener('keyup', () => chatApp.handleTyping());
+
+    // Read Receipts Toggle
+    document.getElementById('read-receipts-toggle')?.addEventListener('change', () => chatApp.toggleReadReceipts());
 
     console.log("app.js loaded and ChatApp initialized with ES6 modules ✅");
 });

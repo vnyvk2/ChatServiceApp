@@ -81,6 +81,40 @@ public class UserController {
         }
     }
 
+    @GetMapping("/read-receipts")
+    @Operation(summary = "Get read receipt setting", description = "Returns whether the authenticated user has read receipts enabled.")
+    public ResponseEntity<?> getReadReceiptSetting(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(Map.of("readReceiptsEnabled", user.isReadReceiptsEnabled()));
+    }
+
+    @PutMapping("/read-receipts")
+    @Operation(summary = "Toggle read receipts", description = "Enables or disables read receipts (blue ticks) for the authenticated user.")
+    public ResponseEntity<?> toggleReadReceipts(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, Boolean> body) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            Boolean enabled = body.get("readReceiptsEnabled");
+            if (enabled == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "readReceiptsEnabled is required"));
+            }
+            user.setReadReceiptsEnabled(enabled);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("readReceiptsEnabled", user.isReadReceiptsEnabled()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ---- New Endpoints ----
 
     @GetMapping

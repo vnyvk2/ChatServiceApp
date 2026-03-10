@@ -52,7 +52,7 @@ function onWebSocketConnected(app) {
 }
 
 /**
- * Subscribe to a specific room's channels (messages, events, typing).
+ * Subscribe to a specific room's channels (messages, events, typing, status).
  */
 export function subscribeToRoom(app, roomId) {
     unsubscribeFromRoom(app);
@@ -77,6 +77,15 @@ export function subscribeToRoom(app, roomId) {
         app.displayTyping(typing);
     });
     app.roomSubscriptions.push(typingSub);
+
+    // Subscribe to message status updates (tick marks)
+    const statusSub = app.stompClient.subscribe('/topic/rooms/' + roomId + '/status', (message) => {
+        const statusUpdate = JSON.parse(message.body);
+        if (statusUpdate.type === 'MESSAGE_STATUS_UPDATE') {
+            app.updateMessageStatuses(statusUpdate.messageIds, statusUpdate.newStatus);
+        }
+    });
+    app.roomSubscriptions.push(statusSub);
 }
 
 /**

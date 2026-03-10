@@ -2,9 +2,13 @@ package com.example.chatservice.service;
 
 import com.example.chatservice.Model.ChatRoom;
 import com.example.chatservice.Model.Message;
+import com.example.chatservice.Model.Message.MessageReceipt;
+import com.example.chatservice.Model.Message.MessageStatus;
+import com.example.chatservice.Model.RoomMembership;
 import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.ChatRoomRepository;
 import com.example.chatservice.repository.MessageRepository;
+import com.example.chatservice.repository.RoomMembershipRepository;
 import com.example.chatservice.repository.UserRepository;
 
 import org.springframework.data.domain.Page;
@@ -13,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,15 +28,18 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final RoomMembershipRepository membershipRepository;
     private final CryptoService cryptoService;
 
     public MessageService(MessageRepository messageRepository,
             UserRepository userRepository,
             ChatRoomRepository chatRoomRepository,
+            RoomMembershipRepository membershipRepository,
             CryptoService cryptoService) {
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.chatRoomRepository = chatRoomRepository;
+        this.membershipRepository = membershipRepository;
         this.cryptoService = cryptoService;
     }
 
@@ -50,9 +59,104 @@ public class MessageService {
         message.setSender(sender);
         message.setEncryptedContent(encryptedContent);
         message.setMessageType(Message.MessageType.TEXT);
+        message.setStatus(MessageStatus.SENT);
 
-        System.out.println("Saving message entity...");
+        // Initialize receipts for all room members except the sender
+        List<RoomMembership> members = membershipRepository.findByRoomIdAndIsActiveTrue(roomId);
+        List<MessageReceipt> receipts = new ArrayList<>();
+        for (RoomMembership membership : members) {
+            User member = membership.getUser();
+            if (!member.getId().equals(sender.getId())) {
+                receipts.add(new MessageReceipt(member.getId(), member.getUsername(), member.getDisplayName()));
+            }
+        }
+        message.setReceipts(receipts);
+
+        System.out.println("Saving message entity with " + receipts.size() + " receipts...");
         return messageRepository.save(message);
+    }
+
+    /**
+     * Marks all messages in a room as DELIVERED for the given user.
+     * Returns the list of updated message IDs whose overall status changed.
+     */
+    public List<String> markAsDelivered(String roomId, String userId) {
+        List<Message> messages = messageRepository
+                .findByRoomIdAndReceiptUserIdAndReceiptStatus(roomId, userId, "SENT");
+        List<String> updatedIds = new ArrayList<>();
+        Instant now = Instant.now();
+
+        for (Message message : messages) {
+            boolean changed = false;
+            for (MessageReceipt receipt : message.getReceipts()) {
+                if (receipt.getUserId().equals(userId) && receipt.getStatus() == MessageStatus.SENT) {
+                    receipt.setStatus(MessageStatus.DELIVERED);
+                    receipt.setDeliveredAt(now);
+                    changed = true;
+                }
+            }
+            if (changed) {
+                MessageStatus oldStatus = message.getStatus();
+                message.recalculateStatus();
+                messageRepository.save(message);
+                if (message.getStatus() != oldStatus) {
+                    updatedIds.add(message.getId());
+                }
+            }
+        }
+        return updatedIds;
+    }
+
+    /**
+     * Marks all messages in a room as SEEN for the given user.
+     * Returns the list of updated message IDs whose overall status changed.
+     */
+    public List<String> markAsSeen(String roomId, String userId) {
+        // First mark any SENT as DELIVERED, then as SEEN
+        List<Message> sentMessages = messageRepository
+                .findByRoomIdAndReceiptUserIdAndReceiptStatus(roomId, userId, "SENT");
+        List<Message> deliveredMessages = messageRepository
+                .findByRoomIdAndReceiptUserIdAndReceiptStatus(roomId, userId, "DELIVERED");
+
+        List<Message> allMessages = new ArrayList<>(sentMessages);
+        allMessages.addAll(deliveredMessages);
+
+        List<String> updatedIds = new ArrayList<>();
+        Instant now = Instant.now();
+
+        for (Message message : allMessages) {
+            boolean changed = false;
+            for (MessageReceipt receipt : message.getReceipts()) {
+                if (receipt.getUserId().equals(userId)) {
+                    if (receipt.getStatus() == MessageStatus.SENT) {
+                        receipt.setDeliveredAt(now);
+                    }
+                    if (receipt.getStatus() != MessageStatus.SEEN) {
+                        receipt.setStatus(MessageStatus.SEEN);
+                        receipt.setSeenAt(now);
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) {
+                MessageStatus oldStatus = message.getStatus();
+                message.recalculateStatus();
+                messageRepository.save(message);
+                if (message.getStatus() != oldStatus) {
+                    updatedIds.add(message.getId());
+                }
+            }
+        }
+        return updatedIds;
+    }
+
+    /**
+     * Get per-member receipt details for a specific message.
+     */
+    public List<MessageReceipt> getReceipts(String messageId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found"));
+        return message.getReceipts();
     }
 
     public List<Message> getRecentMessages(String roomId, int limit) {

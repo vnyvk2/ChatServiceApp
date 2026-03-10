@@ -4,6 +4,7 @@ import com.example.chatservice.Model.Message;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,4 +23,9 @@ public interface MessageRepository extends MongoRepository<Message, String> {
 
     // Count messages in a room
     long countByRoomId(String roomId);
+
+    // Find messages in a room where a specific user's receipt has a certain status
+    @Query("{'roomId': ?0, 'senderId': {$ne: ?1}, 'receipts': {$elemMatch: {'userId': ?1, 'status': ?2}}}")
+    List<Message> findByRoomIdAndReceiptUserIdAndReceiptStatus(String roomId, String userId, String status);
 }
+

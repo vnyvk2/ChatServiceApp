@@ -40,6 +40,8 @@ public class User {
 
     private Instant lastSeenAt;
 
+    private boolean readReceiptsEnabled = true;
+
     @CreatedDate
     private Instant createdAt;
 
@@ -128,5 +130,13 @@ public class User {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public boolean isReadReceiptsEnabled() {
+        return readReceiptsEnabled;
+    }
+
+    public void setReadReceiptsEnabled(boolean readReceiptsEnabled) {
+        this.readReceiptsEnabled = readReceiptsEnabled;
     }
 }

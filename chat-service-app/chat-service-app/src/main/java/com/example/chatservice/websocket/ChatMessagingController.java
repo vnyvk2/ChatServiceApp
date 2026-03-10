@@ -1,11 +1,14 @@
 package com.example.chatservice.websocket;
 
+import com.example.chatservice.Model.Message;
 import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.service.ChatRoomService;
 import com.example.chatservice.service.MessageService;
 import com.example.chatservice.service.UserService;
+
 import jakarta.validation.constraints.NotBlank;
+
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -13,6 +16,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -68,46 +73,102 @@ public class ChatMessagingController {
                                 throw new RuntimeException("This room is currently restricted to announcements only.");
                             }
                         } else if (chatRoomService.findRoomById(roomId).map(r -> r.getRoomType() != com.example.chatservice.Model.ChatRoom.RoomType.GROUP_CHAT).orElse(false)) {
-                            // If they have no membership but the room exists, they shouldn't send messages
                             throw new RuntimeException("You are not a member of this room.");
                         }
 
                         System.out.println("🔄 Saving message to DB...");
-                        com.example.chatservice.Model.Message savedMessage = messageService.saveEncrypted(roomId,
-                                        username, payload.text());
+                        Message savedMessage = messageService.saveEncrypted(roomId, username, payload.text());
                         System.out.println("✅ Message saved to database: " + savedMessage.getId());
 
-                        Map<String, Object> messageEvent = Map.of(
-                                        "type", "MESSAGE",
-                                        "id", savedMessage.getId(),
-                                        "roomId", roomId,
-                                        "sender", Map.of(
-                                                        "username", username,
-                                                        "displayName", sender.getDisplayName(),
-                                                        "status", sender.getStatus().toString()),
-                                        "text", payload.text(),
-                                        "timestamp", System.currentTimeMillis());
+                        Map<String, Object> messageEvent = new HashMap<>();
+                        messageEvent.put("type", "MESSAGE");
+                        messageEvent.put("id", savedMessage.getId());
+                        messageEvent.put("roomId", roomId);
+                        messageEvent.put("sender", Map.of(
+                                        "username", username,
+                                        "displayName", sender.getDisplayName(),
+                                        "status", sender.getStatus().toString()));
+                        messageEvent.put("text", payload.text());
+                        messageEvent.put("messageStatus", savedMessage.getStatus().toString());
+                        messageEvent.put("timestamp", System.currentTimeMillis());
 
                         System.out.println("📡 Broadcasting to /topic/rooms/" + roomId);
-                        messagingTemplate.convertAndSend("/topic/rooms/" + roomId, (Object) messageEvent);
+                        messagingTemplate.convertAndSend("/topic/rooms/" + roomId, messageEvent);
                         System.out.println("✅ Message broadcasted successfully");
                 } catch (Exception e) {
                         System.err.println("❌ Error in sendToRoom: " + e.getMessage());
                         e.printStackTrace();
-                        // Optionally send error back to user
                         if (authentication != null) {
                                 Map<String, Object> errorEvent = Map.of(
                                                 "type", "ERROR",
                                                 "message", "Failed to send message: " + e.getMessage(),
                                                 "timestamp", System.currentTimeMillis());
                                 messagingTemplate.convertAndSendToUser(authentication.getName(), "/queue/errors",
-                                                (Object) errorEvent);
+                                                errorEvent);
                         }
+                }
+        }
+
+        @MessageMapping("/rooms/{roomId}/delivered")
+        public void markDelivered(@DestinationVariable String roomId,
+                        Authentication authentication) {
+                if (authentication == null) return;
+
+                try {
+                        String username = authentication.getName();
+                        User user = userRepository.findByUsername(username).orElseThrow();
+
+                        List<String> updatedIds = messageService.markAsDelivered(roomId, user.getId());
+
+                        if (!updatedIds.isEmpty()) {
+                                Map<String, Object> statusEvent = new HashMap<>();
+                                statusEvent.put("type", "MESSAGE_STATUS_UPDATE");
+                                statusEvent.put("roomId", roomId);
+                                statusEvent.put("messageIds", updatedIds);
+                                statusEvent.put("newStatus", "DELIVERED");
+                                statusEvent.put("timestamp", System.currentTimeMillis());
+
+                                messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/status", statusEvent);
+                        }
+                } catch (Exception e) {
+                        System.err.println("❌ Error in markDelivered: " + e.getMessage());
+                }
+        }
+
+        @MessageMapping("/rooms/{roomId}/seen")
+        public void markSeen(@DestinationVariable String roomId,
+                        Authentication authentication) {
+                if (authentication == null) return;
+
+                try {
+                        String username = authentication.getName();
+                        User user = userRepository.findByUsername(username).orElseThrow();
+
+                        // Check if user has read receipts enabled
+                        if (!user.isReadReceiptsEnabled()) {
+                                return;
+                        }
+
+                        List<String> updatedIds = messageService.markAsSeen(roomId, user.getId());
+
+                        if (!updatedIds.isEmpty()) {
+                                Map<String, Object> statusEvent = new HashMap<>();
+                                statusEvent.put("type", "MESSAGE_STATUS_UPDATE");
+                                statusEvent.put("roomId", roomId);
+                                statusEvent.put("messageIds", updatedIds);
+                                statusEvent.put("newStatus", "SEEN");
+                                statusEvent.put("timestamp", System.currentTimeMillis());
+
+                                messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/status", statusEvent);
+                        }
+                } catch (Exception e) {
+                        System.err.println("❌ Error in markSeen: " + e.getMessage());
                 }
         }
 
         @MessageMapping("/user/status")
         public void updateStatus(@Payload StatusPayload payload, Authentication authentication) {
+                if (authentication == null) return;
                 String username = authentication.getName();
                 User user = userRepository.findByUsername(username).orElseThrow();
 
@@ -127,15 +188,14 @@ public class ChatMessagingController {
                                                 "timestamp", System.currentTimeMillis());
                                 messagingTemplate.convertAndSend(
                                                 "/topic/rooms/" + membership.getRoom().getId() + "/events",
-                                                (Object) statusEvent);
+                                                statusEvent);
                         });
                 } catch (IllegalArgumentException e) {
-                        // Invalid status provided
                         Map<String, Object> errorEvent = Map.of(
                                         "type", "ERROR",
                                         "message", "Invalid status: " + payload.status(),
                                         "timestamp", System.currentTimeMillis());
-                        messagingTemplate.convertAndSendToUser(username, "/queue/errors", (Object) errorEvent);
+                        messagingTemplate.convertAndSendToUser(username, "/queue/errors", errorEvent);
                 }
         }
 
@@ -143,6 +203,7 @@ public class ChatMessagingController {
         public void userTyping(@DestinationVariable String roomId,
                         @Payload TypingPayload payload,
                         Authentication authentication) {
+                if (authentication == null) return;
                 String username = authentication.getName();
                 User user = userRepository.findByUsername(username).orElseThrow();
 
@@ -155,13 +216,13 @@ public class ChatMessagingController {
                                 "isTyping", payload.isTyping(),
                                 "timestamp", System.currentTimeMillis());
 
-                // Send typing indicator to all room members except the sender
-                messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/typing", (Object) typingEvent);
+                messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/typing", typingEvent);
         }
 
         @MessageMapping("/rooms/{roomId}/join-notification")
         public void handleJoinNotification(@DestinationVariable String roomId,
                         Authentication authentication) {
+                if (authentication == null) return;
                 String username = authentication.getName();
                 User user = userRepository.findByUsername(username).orElseThrow();
 
@@ -174,12 +235,13 @@ public class ChatMessagingController {
                                                 "status", user.getStatus().toString()),
                                 "message", user.getDisplayName() + " joined the room",
                                 "timestamp", System.currentTimeMillis());
-                messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", (Object) joinEvent);
+                messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", joinEvent);
         }
 
         @MessageMapping("/rooms/{roomId}/leave-notification")
         public void handleLeaveNotification(@DestinationVariable String roomId,
                         Authentication authentication) {
+                if (authentication == null) return;
                 String username = authentication.getName();
                 User user = userRepository.findByUsername(username).orElseThrow();
 
@@ -191,7 +253,7 @@ public class ChatMessagingController {
                                                 "displayName", user.getDisplayName()),
                                 "message", user.getDisplayName() + " left the room",
                                 "timestamp", System.currentTimeMillis());
-                messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", (Object) leaveEvent);
+                messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", leaveEvent);
         }
 
         // Payload record classes
