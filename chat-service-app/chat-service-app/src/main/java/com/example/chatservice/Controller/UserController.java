@@ -64,6 +64,9 @@ public class UserController {
     public ResponseEntity<?> updateProfile(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody Map<String, String> updates) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
         try {
             User user = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));

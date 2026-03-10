@@ -54,10 +54,10 @@ public class ExampleSecurityConfig {
                         .requestMatchers("/api/auth/**", "/", "/index.html", "/chat.html", "/login.html",
                                 "/signup.html", "/assets/**", "/css/**", "/js/**",
                                 "/ws/**", "/error",
-                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
-                                "/api/users/**", "/api/rooms/**", "/api/messages/**")
+                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers("/api/**").authenticated() // Explicitly protect all other API endpoints
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
                 // Put JWT filter before username/password filter so token-based requests are
