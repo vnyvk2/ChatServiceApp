@@ -39,6 +39,7 @@ function displayMyRooms(app, rooms) {
         const room = membership.room;
         const roomElement = document.createElement('div');
         roomElement.className = 'room-item';
+        roomElement.dataset.roomId = room.id;
         roomElement.onclick = (e) => app.selectRoom(room.id, room.name, room.roomType, e);
 
         const displayName = room.name;

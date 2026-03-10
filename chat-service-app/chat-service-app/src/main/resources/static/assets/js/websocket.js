@@ -23,6 +23,7 @@ export function connectWebSocket(app) {
             console.log('Connected: ' + frame);
             onWebSocketConnected(app);
             updateUserStatus(app, 'ONLINE');
+            markAllDeliveredOnConnect(app);
             const statusSelect = document.getElementById('status-select');
             if (statusSelect) statusSelect.value = 'ONLINE';
         },
@@ -108,4 +109,20 @@ export function updateUserStatus(app, status) {
         app.stompClient.send('/app/user/status', {},
             JSON.stringify({ status: status }));
     }
+}
+
+/**
+ * Call REST endpoint to mark all pending messages as DELIVERED on connect.
+ */
+function markAllDeliveredOnConnect(app) {
+    fetch('/api/messages/mark-delivered-all', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + app.token }
+    }).then(response => {
+        if (response.ok) {
+            console.log('✅ Marked all pending messages as delivered');
+        }
+    }).catch(err => {
+        console.error('Error marking delivered on connect:', err);
+    });
 }

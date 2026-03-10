@@ -3,12 +3,16 @@ package com.example.chatservice.Controller;
 import com.example.chatservice.Dto.response.MessageDto;
 import com.example.chatservice.Dto.response.MessageReceiptDto;
 import com.example.chatservice.Model.Message.MessageReceipt;
+import com.example.chatservice.Model.User;
+import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.service.MessageService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,9 +24,13 @@ import java.util.Map;
 public class MessageController {
 
     private final MessageService messageService;
+    private final UserRepository userRepository;
+    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
-    public MessageController(MessageService messageService) {
+    public MessageController(MessageService messageService, UserRepository userRepository, org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate) {
         this.messageService = messageService;
+        this.userRepository = userRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @GetMapping("/rooms/{roomId}")
@@ -74,5 +82,33 @@ public class MessageController {
         }
         String plainText = messageService.decrypt(cipher);
         return ResponseEntity.ok(Map.of("decrypted", plainText));
+    }
+
+    @PostMapping("/mark-delivered-all")
+    @Operation(summary = "Mark all as delivered", description = "Marks all pending SENT messages as DELIVERED for the current user across all rooms.")
+    public ResponseEntity<?> markAllDelivered(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        List<String[]> results = messageService.markAllAsDeliveredForUser(user.getId());
+
+        long currentTime = System.currentTimeMillis();
+        for (String[] res : results) {
+            String roomId = res[0];
+            List<String> msgIds = java.util.Arrays.asList(res[1].split(","));
+
+            Map<String, Object> statusEvent = new java.util.HashMap<>();
+            statusEvent.put("type", "MESSAGE_STATUS_UPDATE");
+            statusEvent.put("roomId", roomId);
+            statusEvent.put("messageIds", msgIds);
+            statusEvent.put("newStatus", "DELIVERED");
+            statusEvent.put("timestamp", currentTime);
+
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/status", statusEvent);
+        }
+
+        return ResponseEntity.ok(Map.of("updated", results.size()));
     }
 }

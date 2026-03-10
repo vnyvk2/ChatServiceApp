@@ -62,15 +62,24 @@ public class MessageService {
         message.setStatus(MessageStatus.SENT);
 
         // Initialize receipts for all room members except the sender
+        // Auto-mark DELIVERED for members who are currently ONLINE
         List<RoomMembership> members = membershipRepository.findByRoomIdAndIsActiveTrue(roomId);
         List<MessageReceipt> receipts = new ArrayList<>();
+        Instant now = Instant.now();
         for (RoomMembership membership : members) {
             User member = membership.getUser();
             if (!member.getId().equals(sender.getId())) {
-                receipts.add(new MessageReceipt(member.getId(), member.getUsername(), member.getDisplayName()));
+                MessageReceipt receipt = new MessageReceipt(member.getId(), member.getUsername(), member.getDisplayName());
+                // If the member is online, auto-mark as DELIVERED
+                if (member.getStatus() == User.UserStatus.ONLINE) {
+                    receipt.setStatus(MessageStatus.DELIVERED);
+                    receipt.setDeliveredAt(now);
+                }
+                receipts.add(receipt);
             }
         }
         message.setReceipts(receipts);
+        message.recalculateStatus();
 
         System.out.println("Saving message entity with " + receipts.size() + " receipts...");
         return messageRepository.save(message);
@@ -105,6 +114,24 @@ public class MessageService {
             }
         }
         return updatedIds;
+    }
+
+    /**
+     * Marks all pending SENT messages across ALL rooms as DELIVERED for the given user.
+     * Called when a user logs in / connects.
+     */
+    public List<String[]> markAllAsDeliveredForUser(String userId) {
+        List<RoomMembership> memberships = membershipRepository.findByUserIdAndIsActiveTrue(userId);
+        List<String[]> results = new ArrayList<>();
+
+        for (RoomMembership membership : memberships) {
+            String roomId = membership.getRoomId();
+            List<String> updated = markAsDelivered(roomId, userId);
+            if (!updated.isEmpty()) {
+                results.add(new String[]{roomId, String.join(",", updated)});
+            }
+        }
+        return results;
     }
 
     /**

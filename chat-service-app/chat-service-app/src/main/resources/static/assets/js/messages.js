@@ -180,6 +180,35 @@ export function displayMessage(app, messageData, animate = true) {
         sendDeliveryAck(app, app.currentRoom);
         sendSeenAck(app, app.currentRoom);
     }
+
+    // Bubble the room to top of sidebar
+    if (messageData.roomId) {
+        bubbleRoomToTop(messageData.roomId);
+    }
+}
+
+/**
+ * Move a room item to the top of the sidebar room list.
+ */
+function bubbleRoomToTop(roomId) {
+    const roomList = document.getElementById('room-list');
+    if (!roomList) return;
+
+    const roomItems = roomList.querySelectorAll('.room-item');
+    for (const item of roomItems) {
+        // Match by the onclick handler or data attribute
+        const onclickAttr = item.getAttribute('onclick') || '';
+        if (item.dataset.roomId === roomId || onclickAttr.includes(roomId)) {
+            roomList.prepend(item);
+            // Brief highlight animation
+            item.style.transition = 'background 0.3s ease';
+            item.style.background = 'rgba(59, 130, 246, 0.08)';
+            setTimeout(() => {
+                item.style.background = '';
+            }, 1500);
+            break;
+        }
+    }
 }
 
 /**
