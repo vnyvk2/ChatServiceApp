@@ -114,6 +114,34 @@ export function subscribeToRoom(app, roomId) {
         if (event.type === 'MESSAGE_DELETED' && event.messageId) {
             const msgEl = document.getElementById('msg-' + event.messageId);
             if (msgEl) msgEl.remove();
+            loadMyRooms(app);
+            return;
+        }
+
+        if (event.type === 'MESSAGE_EDITED' && event.messageId) {
+            const msgEl = document.getElementById('msg-' + event.messageId);
+            if (msgEl) {
+                const textEl = msgEl.querySelector('.message-text');
+                if (textEl) {
+                    textEl.textContent = event.text;
+                    let metaEl = msgEl.querySelector('.message-meta');
+                    if (!metaEl) {
+                        metaEl = document.createElement('div');
+                        metaEl.className = 'message-meta';
+                        msgEl.querySelector('.message-content').appendChild(metaEl);
+                    }
+                    if (!metaEl.querySelector('.edited-label')) {
+                        const editedLabel = document.createElement('span');
+                        editedLabel.className = 'edited-label';
+                        editedLabel.textContent = '(edited)';
+                        editedLabel.style.fontSize = '0.7em';
+                        editedLabel.style.opacity = '0.7';
+                        editedLabel.style.marginRight = '4px';
+                        metaEl.prepend(editedLabel);
+                    }
+                }
+            }
+            loadMyRooms(app);
             return;
         }
 

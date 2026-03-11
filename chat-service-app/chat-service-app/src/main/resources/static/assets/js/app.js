@@ -16,7 +16,7 @@
 import { login, register, logout, showLogin, showRegister } from './auth.js?v=12';
 import { connectWebSocket, updateUserStatus } from './websocket.js?v=12';
 import { loadMyRooms, loadAvailableRooms, selectRoom, createRoom, joinRoom, leaveRoom, startDirectMessage, renameRoom, deleteRoom, clearChat } from './rooms.js?v=12';
-import { loadMessages, displayMessage, displayEvent, displayTyping, sendMessage, handleTyping, sendDeliveryAck, sendSeenAck, updateMessageStatuses } from './messages.js?v=12';
+import { loadMessages, displayMessage, displayEvent, displayTyping, sendMessage, handleTyping, sendDeliveryAck, sendSeenAck, updateMessageStatuses, promptEditMessage, promptDeleteMessage } from './messages.js?v=12';
 import { loadRoomMembers, removeMember, toggleMemberMute, toggleAdminRole, toggleRoomMute } from './members.js?v=12';
 import { showToast, closeModals, showModal, adjustLayout, escapeHtml } from './ui.js?v=12';
 
@@ -126,6 +126,8 @@ class ChatApp {
     sendDeliveryAck(roomId) { return sendDeliveryAck(this, roomId); }
     sendSeenAck(roomId) { return sendSeenAck(this, roomId); }
     updateMessageStatuses(msgIds, status) { return updateMessageStatuses(msgIds, status); }
+    promptEditMessage(messageId) { return promptEditMessage(this, messageId); }
+    promptDeleteMessage(messageId) { return promptDeleteMessage(this, messageId); }
 
     // --- Members (delegates to members.js) ---
     loadRoomMembers(roomId) { return loadRoomMembers(this, roomId); }

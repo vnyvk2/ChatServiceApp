@@ -46,6 +46,8 @@ public class Message {
     @CreatedDate
     private Instant createdAt;
 
+    private Instant editedAt;
+
     public enum MessageType {
         TEXT, IMAGE, FILE, SYSTEM
     }

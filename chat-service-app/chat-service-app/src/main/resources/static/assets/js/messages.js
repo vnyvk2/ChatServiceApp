@@ -87,6 +87,7 @@ export function displayMessages(app, messages) {
         const messageText = messageData.text ? escapeHtml(messageData.text) : '...';
         const messageStatus = messageData.status || messageData.messageStatus || 'SENT';
         const ticks = getStatusTicks(messageStatus, isOwnMessage);
+        const editedLabel = messageData.editedAt ? `<span class="edited-label" style="font-size:0.7em;opacity:0.7;margin-right:4px;">(edited)</span>` : '';
 
         messageElement.innerHTML = `
             <div class="message-content">
@@ -95,7 +96,7 @@ export function displayMessages(app, messages) {
                     ${showTime ? `<span class="message-time">${timeString}</span>` : ''}
                 </div>
                 <div class="message-text">${messageText}</div>
-                ${ticks ? `<div class="message-meta">${ticks}</div>` : ''}
+                ${(ticks || editedLabel) ? `<div class="message-meta">${editedLabel}${ticks}</div>` : ''}
             </div>
         `;
 
@@ -140,6 +141,7 @@ export function displayMessage(app, messageData, animate = true) {
     const initials = messageData.sender.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
     const messageStatus = messageData.messageStatus || messageData.status || 'SENT';
     const ticks = getStatusTicks(messageStatus, isOwnMessage);
+    const editedLabel = messageData.editedAt ? `<span class="edited-label" style="font-size:0.7em;opacity:0.7;margin-right:4px;">(edited)</span>` : '';
 
     messageElement.innerHTML = `
         <div class="message-avatar">${initials}</div>
@@ -149,7 +151,7 @@ export function displayMessage(app, messageData, animate = true) {
                 ${showTime ? `<span class="message-time">${timestamp}</span>` : ''}
             </div>
             <div class="message-text">${escapeHtml(messageData.text)}</div>
-            ${ticks ? `<div class="message-meta">${ticks}</div>` : ''}
+            ${(ticks || editedLabel) ? `<div class="message-meta">${editedLabel}${ticks}</div>` : ''}
         </div>
     `;
 
@@ -184,6 +186,27 @@ export function displayMessage(app, messageData, animate = true) {
     // Bubble the room to top of sidebar
     if (messageData.roomId) {
         bubbleRoomToTop(messageData.roomId);
+        updateSidebarLastMessage(messageData.roomId, messageData.sender.displayName, messageData.text);
+    }
+}
+
+export function updateSidebarLastMessage(roomId, senderName, text) {
+    const roomList = document.getElementById('room-list');
+    if (!roomList) return;
+    const roomItems = roomList.querySelectorAll('.room-item');
+    for (const item of roomItems) {
+        const onclickAttr = item.getAttribute('onclick') || '';
+        if (item.dataset.roomId === roomId || onclickAttr.includes(roomId)) {
+            let lastMsgEl = item.querySelector('.room-last-message');
+            if (!lastMsgEl) {
+                lastMsgEl = document.createElement('div');
+                lastMsgEl.className = 'room-last-message';
+                lastMsgEl.style.cssText = 'font-size:0.8rem;color:inherit;opacity:0.8;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+                item.appendChild(lastMsgEl);
+            }
+            lastMsgEl.textContent = `${senderName}: ${text}`;
+            break;
+        }
     }
 }
 
@@ -285,6 +308,33 @@ export function sendMessage(app) {
     const text = messageInput.value.trim();
 
     if (!text || !app.currentRoom || !app.stompClient || !app.stompClient.connected) {
+        return;
+    }
+
+    if (app.editingMessageId) {
+        // Send edit request instead of sending a new message
+        fetch(`/api/rooms/${app.currentRoom}/messages/${app.editingMessageId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + app.token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ content: text })
+        }).then(res => {
+            if (!res.ok) {
+                res.json().then(data => showToast(data.error || 'Failed to edit', 'error'));
+            }
+        }).catch(err => {
+            console.error(err);
+            showToast('Network error', 'error');
+        });
+
+        app.editingMessageId = null;
+        messageInput.value = '';
+        const sendBtn = document.getElementById('send-btn');
+        if (sendBtn) sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        if (cancelEditBtn) cancelEditBtn.remove();
         return;
     }
 
@@ -506,6 +556,11 @@ async function showReceiptModal(app, messageId) {
             html += `<div class="receipt-section"><p style="text-align:center;color:#94a3b8;">No receipt data available</p></div>`;
         }
 
+        html += `<div class="modal-actions" style="margin-top: 1rem; border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; gap: 0.5rem; justify-content: space-between;">
+            <button class="btn-primary btn-small" onclick="chatApp.promptEditMessage('${messageId}')" style="flex: 1;"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn-danger-ghost btn-small" onclick="chatApp.promptDeleteMessage('${messageId}')" style="flex: 1;"><i class="fas fa-trash"></i> Delete</button>
+        </div>`;
+
         modal.innerHTML = html;
         overlay.classList.remove('hidden');
 
@@ -513,4 +568,93 @@ async function showReceiptModal(app, messageId) {
         console.error('Error loading receipts:', error);
         showToast('Could not load receipt info', 'error');
     }
+}
+
+/**
+ * Prompt user to edit a message
+ */
+export async function promptEditMessage(app, messageId) {
+    const msgEl = document.getElementById('msg-' + messageId);
+    if (!msgEl) return;
+    const currentText = msgEl.querySelector('.message-text').textContent;
+    
+    // Hide info modal
+    const overlay = document.getElementById('receipt-modal-overlay');
+    if (overlay) overlay.classList.add('hidden');
+
+    app.editingMessageId = messageId;
+    const messageInput = document.getElementById('message-input');
+    messageInput.value = currentText;
+    messageInput.focus();
+
+    const sendBtn = document.getElementById('send-btn');
+    if (sendBtn) sendBtn.innerHTML = '<i class="fas fa-check"></i>';
+
+    const inputArea = document.getElementById('chat-input-area');
+    if (!document.getElementById('cancel-edit-btn')) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.id = 'cancel-edit-btn';
+        cancelBtn.innerHTML = '<i class="fas fa-times"></i>';
+        cancelBtn.className = 'btn-cancel-send';
+        cancelBtn.style.cssText = 'background:none;border:none;color:#ef4444;font-size:1.2rem;cursor:pointer;padding:0 10px;';
+        cancelBtn.title = "Cancel Edit";
+        cancelBtn.onclick = () => {
+            app.editingMessageId = null;
+            messageInput.value = '';
+            if (sendBtn) sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            cancelBtn.remove();
+        };
+        inputArea.appendChild(cancelBtn);
+    }
+}
+
+/**
+ * Prompt user to delete a message 
+ */
+export async function promptDeleteMessage(app, messageId) {
+    // Hide info modal
+    const overlay = document.getElementById('receipt-modal-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    
+    // Create WhatsApp-like custom modal
+    let confirmOverlay = document.getElementById('custom-confirm-overlay');
+    if (!confirmOverlay) {
+        confirmOverlay = document.createElement('div');
+        confirmOverlay.id = 'custom-confirm-overlay';
+        confirmOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:19999;display:flex;align-items:center;justify-content:center;';
+        document.body.appendChild(confirmOverlay);
+    }
+
+    confirmOverlay.innerHTML = `
+        <div style="background:white;padding:1.5rem;border-radius:12px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-width:300px;text-align:center;">
+            <p style="margin-top:0;font-weight:500;color:#1e293b;margin-bottom:1.5rem;">Delete message?</p>
+            <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                <button id="confirm-delete-btn" style="padding:0.6rem;background:white;border:1px solid #e2e8f0;border-radius:8px;color:#ef4444;cursor:pointer;font-weight:500;">Delete for everyone</button>
+                <button id="cancel-delete-btn" style="padding:0.6rem;background:white;border:1px solid #e2e8f0;border-radius:8px;color:#1e293b;cursor:pointer;font-weight:500;">Cancel</button>
+            </div>
+        </div>
+    `;
+    confirmOverlay.style.display = 'flex';
+
+    document.getElementById('cancel-delete-btn').onclick = () => {
+        confirmOverlay.style.display = 'none';
+    };
+
+    document.getElementById('confirm-delete-btn').onclick = async () => {
+        confirmOverlay.style.display = 'none';
+        try {
+            const response = await fetch(`/api/rooms/${app.currentRoom}/messages/${messageId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + app.token }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                showToast(error.error || 'Failed to delete message', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting message:', error);
+            showToast('Network error', 'error');
+        }
+    };
 }

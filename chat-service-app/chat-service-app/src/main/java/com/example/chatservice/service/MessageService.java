@@ -85,6 +85,19 @@ public class MessageService {
         return messageRepository.save(message);
     }
 
+    public Message editMessage(String messageId, String userId, String newContent) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found"));
+        
+        if (!message.getSender().getId().equals(userId)) {
+            throw new RuntimeException("You can only edit your own messages");
+        }
+
+        message.setEncryptedContent(cryptoService.encrypt(newContent));
+        message.setEditedAt(Instant.now());
+        return messageRepository.save(message);
+    }
+
     /**
      * Marks all messages in a room as DELIVERED for the given user.
      * Returns the list of updated message IDs whose overall status changed.

@@ -44,14 +44,16 @@ function displayMyRooms(app, rooms) {
 
         const displayName = room.name;
 
-        // Hide description for Direct Messages
-        const descriptionHtml = (room.roomType === 'DIRECT_MESSAGE') ? '' :
-            (room.description ? `<div class="room-description">${escapeHtml(room.description)}</div>` : '');
-
         // Status dot for DM rooms (green=online, grey=offline)
         const statusDotHtml = (room.roomType === 'DIRECT_MESSAGE')
             ? `<span class="dm-status-dot" data-room-id="${room.id}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9ca3af;margin-right:6px;flex-shrink:0;"></span>`
             : '';
+
+        let lastMsgHtml = '';
+        if (room.lastMessage) {
+            const shortText = `${room.lastMessage.senderName}: ${room.lastMessage.text}`;
+            lastMsgHtml = `<div class="room-last-message" style="font-size:0.8rem;color:inherit;opacity:0.8;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(shortText)}</div>`;
+        }
 
         roomElement.innerHTML = `
             <div class="room-item-header">
@@ -60,8 +62,7 @@ function displayMyRooms(app, rooms) {
                     ${escapeHtml(displayName)}
                 </div>
             </div>
-            <div class="room-type">${room.roomType.replace('_', ' ')}</div>
-            ${descriptionHtml}
+            ${lastMsgHtml}
         `;
 
         roomList.appendChild(roomElement);

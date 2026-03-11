@@ -49,7 +49,8 @@ public class MessageController {
                         msg.getSender().getStatus()),
                 messageService.decrypt(msg.getEncryptedContent()),
                 msg.getStatus() != null ? msg.getStatus().toString() : "SENT",
-                msg.getCreatedAt()));
+                msg.getCreatedAt(),
+                msg.getEditedAt()));
         return ResponseEntity.ok(dtos);
     }
 
@@ -110,5 +111,36 @@ public class MessageController {
         }
 
         return ResponseEntity.ok(Map.of("updated", results.size()));
+    }
+
+    @PutMapping("/rooms/{roomId}/messages/{messageId}")
+    @Operation(summary = "Edit a message", description = "Edits a specific message.")
+    public ResponseEntity<?> editMessage(@PathVariable String roomId,
+                                         @PathVariable String messageId,
+                                         @RequestBody Map<String, String> body,
+                                         @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        String newContent = body.get("content");
+        if (newContent == null || newContent.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Content cannot be empty"));
+        }
+        try {
+            User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            com.example.chatservice.Model.Message updatedMsg = messageService.editMessage(messageId, user.getId(), newContent);
+            
+            Map<String, Object> editEvent = Map.of(
+                "type", "MESSAGE_EDITED",
+                "roomId", roomId,
+                "messageId", messageId,
+                "text", newContent,
+                "editedAt", updatedMsg.getEditedAt(),
+                "timestamp", System.currentTimeMillis()
+            );
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", editEvent);
+            
+            return ResponseEntity.ok(Map.of("message", "Message edited successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
     }
 }

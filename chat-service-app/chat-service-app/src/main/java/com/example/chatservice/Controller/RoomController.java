@@ -180,6 +180,17 @@ public class RoomController {
                 roomData.put("roomType", room.getRoomType().name());
                 roomData.put("isPrivate", room.isPrivate());
 
+                List<com.example.chatservice.Model.Message> recentMessages = messageService.getRecentMessages(room.getId(), 1);
+                if (!recentMessages.isEmpty()) {
+                    com.example.chatservice.Model.Message lastMsg = recentMessages.get(0);
+                    String decryptedText = messageService.decrypt(lastMsg.getEncryptedContent());
+                    Map<String, Object> lastMessageData = new java.util.HashMap<>();
+                    lastMessageData.put("text", decryptedText);
+                    lastMessageData.put("createdAt", lastMsg.getCreatedAt());
+                    lastMessageData.put("senderName", lastMsg.getSender().getDisplayName());
+                    roomData.put("lastMessage", lastMessageData);
+                }
+
                 Map<String, Object> membershipData = new java.util.HashMap<>();
                 membershipData.put("room", roomData);
                 membershipData.put("role", membership.getRole().name());
@@ -530,7 +541,7 @@ public class RoomController {
     }
 
     @DeleteMapping("/{roomId}/messages/{messageId}")
-    @Operation(summary = "Delete a specific message", description = "Deletes a specific message. Admin can delete any message.")
+    @Operation(summary = "Delete a specific message", description = "Deletes a specific message. Admin can delete any message. Sender can delete their own message.")
     public ResponseEntity<?> deleteMessage(@PathVariable String roomId,
             @PathVariable String messageId,
             @AuthenticationPrincipal UserDetails principal) {
@@ -539,8 +550,13 @@ public class RoomController {
         }
         try {
             User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
-            if (!chatRoomService.isUserRoomAdmin(user.getId(), roomId)) {
-                return ResponseEntity.status(403).body(Map.of("error", "Only admins can delete messages"));
+            com.example.chatservice.Model.Message message = messageService.findById(messageId).orElseThrow(() -> new RuntimeException("Message not found"));
+
+            boolean isAdmin = chatRoomService.isUserRoomAdmin(user.getId(), roomId);
+            boolean isSender = message.getSender().getId().equals(user.getId());
+
+            if (!isAdmin && !isSender) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only admins or the sender can delete messages"));
             }
 
             messageService.deleteMessage(messageId);

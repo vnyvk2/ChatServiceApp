@@ -9,7 +9,8 @@ public record MessageDto(
         SenderDto sender,
         String text,
         String status,
-        Instant createdAt) {
+        Instant createdAt,
+        Instant editedAt) {
     public record SenderDto(String username, String displayName, User.UserStatus status) {
     }
 }
