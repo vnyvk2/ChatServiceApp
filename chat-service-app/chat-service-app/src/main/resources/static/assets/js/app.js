@@ -13,12 +13,12 @@
  *   ui.js        - Toasts, modals, layout helpers, escapeHtml
  */
 
-import { login, register, logout, showLogin, showRegister } from './auth.js?v=12';
-import { connectWebSocket, updateUserStatus } from './websocket.js?v=12';
-import { loadMyRooms, loadAvailableRooms, selectRoom, createRoom, joinRoom, leaveRoom, startDirectMessage, renameRoom, deleteRoom, clearChat } from './rooms.js?v=12';
-import { loadMessages, displayMessage, displayEvent, displayTyping, sendMessage, handleTyping, sendDeliveryAck, sendSeenAck, updateMessageStatuses, promptEditMessage, promptDeleteMessage } from './messages.js?v=12';
-import { loadRoomMembers, removeMember, toggleMemberMute, toggleAdminRole, toggleRoomMute } from './members.js?v=12';
-import { showToast, closeModals, showModal, adjustLayout, escapeHtml } from './ui.js?v=12';
+import { login, register, logout, showLogin, showRegister } from './auth.js?v=13';
+import { connectWebSocket, updateUserStatus } from './websocket.js?v=13';
+import { loadMyRooms, loadAvailableRooms, selectRoom, createRoom, joinRoom, leaveRoom, startDirectMessage, renameRoom, deleteRoom, clearChat } from './rooms.js?v=13';
+import { loadMessages, displayMessage, displayEvent, displayTyping, sendMessage, handleTyping, sendDeliveryAck, sendSeenAck, updateMessageStatuses, promptEditMessage, promptDeleteMessage } from './messages.js?v=13';
+import { loadRoomMembers, removeMember, toggleMemberMute, toggleAdminRole, toggleRoomMute } from './members.js?v=13';
+import { showToast, closeModals, showModal, adjustLayout, escapeHtml } from './ui.js?v=13';
 
 class ChatApp {
     constructor() {
@@ -34,6 +34,8 @@ class ChatApp {
         this.readReceiptsEnabled = true;
         this.showOnlineStatus = true;
         this.lastSeenVisible = true;
+        this.profilePicVisibility = 'EVERYONE';
+        this.myAvatarUrl = null;
         this.init();
     }
 
@@ -59,6 +61,14 @@ class ChatApp {
         // Profile logic
         document.getElementById('profile-btn')?.addEventListener('click', () => this.showProfile());
         document.getElementById('save-profile-btn')?.addEventListener('click', () => this.saveProfile());
+
+        // Avatar upload
+        const avatarContainer = document.getElementById('profile-avatar-container');
+        const avatarFileInput = document.getElementById('avatar-file-input');
+        if (avatarContainer && avatarFileInput) {
+            avatarContainer.addEventListener('click', () => avatarFileInput.click());
+            avatarFileInput.addEventListener('change', (e) => this.handleAvatarSelect(e));
+        }
 
         document.querySelectorAll('.cancel-modal-btn').forEach(btn => {
             btn.addEventListener('click', () => closeModals());
@@ -102,6 +112,7 @@ class ChatApp {
         this.fetchReadReceiptSetting();
         this.fetchOnlineStatusSetting();
         this.fetchLastSeenSetting();
+        this.fetchMyProfile();
     }
 
     // --- Rooms (delegates to rooms.js) ---
@@ -194,9 +205,114 @@ class ChatApp {
         if (statusSelect) {
             statusSelect.value = (this.currentUser.status || 'ONLINE');
         }
+        // Profile pic visibility
+        const visibilitySelect = document.getElementById('profile-pic-visibility');
+        if (visibilitySelect) {
+            visibilitySelect.value = this.profilePicVisibility || 'EVERYONE';
+        }
+        // Show current avatar in profile modal
+        this._displayProfileAvatar(this.myAvatarUrl);
         // Update profile dot color
         this._updateProfileStatusDot(this.currentUser.status || 'ONLINE');
         showModal('profile-modal');
+    }
+
+    _displayProfileAvatar(avatarUrl) {
+        const img = document.getElementById('profile-avatar-img');
+        const icon = document.getElementById('profile-avatar-icon');
+        if (avatarUrl) {
+            img.src = avatarUrl;
+            img.style.display = 'block';
+            icon.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            icon.style.display = 'block';
+        }
+    }
+
+    _updateSidebarAvatar(avatarUrl) {
+        const img = document.getElementById('sidebar-avatar-img');
+        const icon = document.getElementById('sidebar-avatar-icon');
+        if (img && icon) {
+            if (avatarUrl) {
+                img.src = avatarUrl;
+                img.style.display = 'block';
+                icon.style.display = 'none';
+            } else {
+                img.style.display = 'none';
+                icon.style.display = 'block';
+            }
+        }
+    }
+
+    async fetchMyProfile() {
+        try {
+            const response = await fetch('/api/profiles/me', {
+                headers: { 'Authorization': 'Bearer ' + this.token }
+            });
+            if (response.ok) {
+                const profile = await response.json();
+                this.myAvatarUrl = profile.avatarUrl || null;
+                this.profilePicVisibility = profile.profilePicVisibility || 'EVERYONE';
+                this._updateSidebarAvatar(this.myAvatarUrl);
+            }
+        } catch (e) {
+            console.error('Error fetching profile:', e);
+        }
+    }
+
+    handleAvatarSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate on client side
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            showToast('Only JPEG, PNG, GIF, and WebP images are allowed', 'error');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('File must be less than 5MB', 'error');
+            return;
+        }
+
+        // Show preview immediately
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this._displayProfileAvatar(e.target.result);
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to server
+        this.uploadAvatar(file);
+    }
+
+    async uploadAvatar(file) {
+        const userId = this.currentUser.id;
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`/api/profiles/${userId}/avatar`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + this.token },
+                body: formData
+            });
+
+            if (response.ok) {
+                const profile = await response.json();
+                this.myAvatarUrl = profile.avatarUrl;
+                this._updateSidebarAvatar(this.myAvatarUrl);
+                this._displayProfileAvatar(this.myAvatarUrl);
+                showToast('Profile picture updated!', 'success');
+            } else {
+                const error = await response.json();
+                showToast(error.error || 'Failed to upload picture', 'error');
+            }
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            showToast('Network error uploading picture', 'error');
+        }
     }
 
     async fetchReadReceiptSetting() {
@@ -331,6 +447,29 @@ class ChatApp {
         const phoneNumber = document.getElementById('profile-phone').value.trim();
         const email = document.getElementById('profile-email').value.trim();
 
+        // Save profile pic visibility to profiles API
+        const visibilitySelect = document.getElementById('profile-pic-visibility');
+        if (visibilitySelect) {
+            const newVisibility = visibilitySelect.value;
+            if (newVisibility !== this.profilePicVisibility) {
+                try {
+                    const visResp = await fetch(`/api/profiles/${this.currentUser.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + this.token,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ profilePicVisibility: newVisibility })
+                    });
+                    if (visResp.ok) {
+                        this.profilePicVisibility = newVisibility;
+                    }
+                } catch (e) {
+                    console.error('Error saving pic visibility:', e);
+                }
+            }
+        }
+
         try {
             const response = await fetch('/api/users/profile', {
                 method: 'PUT',
@@ -359,7 +498,7 @@ class ChatApp {
     }
 
     // --- User Details Modal (for DM info) ---
-    _showUserDetailsModal(member) {
+    async _showUserDetailsModal(member) {
         console.log('[DEBUG] _showUserDetailsModal called with:', member);
 
         let overlay = document.getElementById('modal-overlay');
@@ -385,9 +524,25 @@ class ChatApp {
         const statusColor = member.status === 'ONLINE' ? '#22c55e' : (member.status === 'AWAY' ? '#eab308' : '#9ca3af');
         const statusText = member.status ? member.status.charAt(0) + member.status.slice(1).toLowerCase() : 'Offline';
 
+        // Fetch the other user's profile to get their avatar (respecting privacy)
+        let avatarHtml = '<i class="fas fa-user-circle" style="font-size:3rem;color:#3b82f6;"></i>';
+        try {
+            const profileResp = await fetch(`/api/profiles/${member.userId || member.id}`, {
+                headers: { 'Authorization': 'Bearer ' + this.token }
+            });
+            if (profileResp.ok) {
+                const profile = await profileResp.json();
+                if (profile.avatarUrl) {
+                    avatarHtml = `<img src="${profile.avatarUrl}" alt="Avatar" style="width:70px;height:70px;border-radius:50%;object-fit:cover;">`;
+                }
+            }
+        } catch (e) {
+            console.warn('Could not fetch user profile:', e);
+        }
+
         modal.innerHTML = `
             <div style="text-align:center;margin-bottom:1rem;position:relative;display:inline-block;width:100%;">
-                <i class="fas fa-user-circle" style="font-size:3rem;color:#3b82f6;"></i>
+                ${avatarHtml}
                 <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${statusColor};border:2px solid white;position:relative;top:-5px;left:-5px;"></span>
             </div>
             <h3 id="ud-display-name" style="text-align:center;margin-bottom:0.25rem;">${escapeHtml(member.displayName || 'Unknown')}</h3>

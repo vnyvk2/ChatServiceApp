@@ -26,6 +26,8 @@ public class Profile {
 
     private String bio;
 
+    private String profilePicVisibility = "EVERYONE";
+
     @CreatedDate
     private Instant createdAt;
 
@@ -62,6 +64,14 @@ public class Profile {
 
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getProfilePicVisibility() {
+        return profilePicVisibility;
+    }
+
+    public void setProfilePicVisibility(String profilePicVisibility) {
+        this.profilePicVisibility = profilePicVisibility;
     }
 
     public Instant getCreatedAt() {

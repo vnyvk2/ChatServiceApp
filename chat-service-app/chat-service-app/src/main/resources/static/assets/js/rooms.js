@@ -40,13 +40,19 @@ function displayMyRooms(app, rooms) {
         const roomElement = document.createElement('div');
         roomElement.className = 'room-item';
         roomElement.dataset.roomId = room.id;
+        roomElement.style.cssText = 'display:flex;align-items:center;gap:0.75rem;';
         roomElement.onclick = (e) => app.selectRoom(room.id, room.name, room.roomType, e);
 
         const displayName = room.name;
 
+        // Default avatar image based on room type
+        const defaultImg = (room.roomType === 'DIRECT_MESSAGE')
+            ? 'assets/Images/defaultProfileImage.png'
+            : 'assets/Images/defaultProfileImageGroups.png';
+
         // Status dot for DM rooms (green=online, grey=offline)
         const statusDotHtml = (room.roomType === 'DIRECT_MESSAGE')
-            ? `<span class="dm-status-dot" data-room-id="${room.id}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9ca3af;margin-right:6px;flex-shrink:0;"></span>`
+            ? `<span class="dm-status-dot" data-room-id="${room.id}" style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:#9ca3af;border:2px solid white;z-index:2;"></span>`
             : '';
 
         let lastMsgHtml = '';
@@ -56,23 +62,27 @@ function displayMyRooms(app, rooms) {
         }
 
         roomElement.innerHTML = `
-            <div class="room-item-header">
-                <div class="room-name" style="display:flex;align-items:center;">
-                    ${statusDotHtml}
-                    ${escapeHtml(displayName)}
-                </div>
+            <div class="room-item-avatar" style="position:relative;flex-shrink:0;">
+                <img src="${defaultImg}" alt="" class="room-avatar-img" data-room-id="${room.id}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;">
+                ${statusDotHtml}
             </div>
-            ${lastMsgHtml}
+            <div style="flex:1;min-width:0;">
+                <div class="room-item-header">
+                    <div class="room-name">${escapeHtml(displayName)}</div>
+                </div>
+                ${lastMsgHtml}
+            </div>
         `;
 
         roomList.appendChild(roomElement);
 
-        // Fetch online status for DM rooms
+        // Fetch online status and profile pic for DM rooms
         if (room.roomType === 'DIRECT_MESSAGE') {
-            fetchDmStatus(app, room.id, roomElement);
+            fetchDmStatusAndAvatar(app, room.id, roomElement);
         }
     });
 }
+
 
 /**
  * Load available public rooms for the Join modal.
@@ -197,6 +207,26 @@ export async function selectRoom(app, roomId, roomName, roomType, e = null) {
         loadRoomMembers(app, roomId),
         loadMessages(app, roomId)
     ]);
+
+    // After members loaded, update chat header avatar for DMs
+    if (roomType === 'DIRECT_MESSAGE' && app.currentRoomOtherMember) {
+        const otherMember = app.currentRoomOtherMember;
+        try {
+            const profileResp = await fetch(`/api/profiles/${otherMember.userId || otherMember.id}`, {
+                headers: { 'Authorization': 'Bearer ' + app.token }
+            });
+            if (profileResp.ok) {
+                const profile = await profileResp.json();
+                if (profile.avatarUrl && headerAvatar) {
+                    headerAvatar.innerHTML = `<img src="${profile.avatarUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+                }
+            }
+        } catch (e) {
+            console.warn('Could not fetch DM user profile pic for header:', e);
+        }
+    } else if (roomType !== 'DIRECT_MESSAGE' && headerAvatar) {
+        headerAvatar.innerHTML = `<img src="assets/Images/defaultProfileImageGroups.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    }
 
     // Clear welcome message
     const welcomeMessage = document.querySelector('.welcome-message');
@@ -402,9 +432,9 @@ export async function renameRoom(app) {
 }
 
 /**
- * Fetch DM other user's online status and update the dot.
+ * Fetch DM other user's online status and profile picture, updating the sidebar.
  */
-async function fetchDmStatus(app, roomId, roomElement) {
+async function fetchDmStatusAndAvatar(app, roomId, roomElement) {
     try {
         const response = await fetch(`/api/rooms/${roomId}/members`, {
             headers: { 'Authorization': 'Bearer ' + app.token }
@@ -414,9 +444,28 @@ async function fetchDmStatus(app, roomId, roomElement) {
             const members = data.members || data;
             const otherMember = members.find(m => m.username !== app.currentUser.username);
             if (otherMember) {
+                // Update status dot
                 const dot = roomElement.querySelector('.dm-status-dot');
                 if (dot) {
                     dot.style.background = otherMember.status === 'ONLINE' ? '#22c55e' : '#9ca3af';
+                }
+
+                // Fetch profile picture for the other user
+                try {
+                    const profileResp = await fetch(`/api/profiles/${otherMember.userId || otherMember.id}`, {
+                        headers: { 'Authorization': 'Bearer ' + app.token }
+                    });
+                    if (profileResp.ok) {
+                        const profile = await profileResp.json();
+                        if (profile.avatarUrl) {
+                            const avatarImg = roomElement.querySelector('.room-avatar-img');
+                            if (avatarImg) {
+                                avatarImg.src = profile.avatarUrl;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch DM user profile pic:', e);
                 }
             }
         }

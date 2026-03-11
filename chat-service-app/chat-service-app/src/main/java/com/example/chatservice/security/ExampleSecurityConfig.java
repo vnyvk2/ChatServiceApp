@@ -53,7 +53,7 @@ public class ExampleSecurityConfig {
                         // Allow auth endpoints, static resources and root
                         .requestMatchers("/api/auth/**", "/", "/index.html", "/chat.html", "/login.html",
                                 "/signup.html", "/assets/**", "/css/**", "/js/**",
-                                "/ws/**", "/error",
+                                "/uploads/**", "/ws/**", "/error",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()

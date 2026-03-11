@@ -4,12 +4,15 @@ import com.example.chatservice.Model.Profile;
 import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.service.ProfileService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 import java.util.Optional;
@@ -49,21 +52,44 @@ public class ProfileController {
     }
 
     @GetMapping("/{userId}")
-    @Operation(summary = "Get a user's profile", description = "Fetches a specific user's profile details by userId.")
-    public ResponseEntity<?> getUserProfile(@PathVariable String userId) {
+    @Operation(summary = "Get a user's profile", description = "Fetches a specific user's profile details by userId. Respects profile picture visibility settings.")
+    public ResponseEntity<?> getUserProfile(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
         Optional<Profile> profileOpt = profileService.getProfileByUserId(userId);
-        if (profileOpt.isPresent()) {
-            return ResponseEntity.ok(profileOpt.get());
-        }
         
-        // Return 404 or an empty profile? Empty profile is usually fine for UI to just show "no bio"
-        Profile emptyProfile = new Profile();
-        emptyProfile.setUserId(userId);
-        return ResponseEntity.ok(emptyProfile);
+        Profile profile;
+        if (profileOpt.isPresent()) {
+            profile = profileOpt.get();
+        } else {
+            profile = new Profile();
+            profile.setUserId(userId);
+            return ResponseEntity.ok(profile);
+        }
+
+        // Check if the requester is the profile owner
+        boolean isOwner = false;
+        if (userDetails != null) {
+            Optional<User> requester = userRepository.findByUsername(userDetails.getUsername());
+            if (requester.isPresent() && requester.get().getId().equals(userId)) {
+                isOwner = true;
+            }
+        }
+
+        // If not the owner, respect visibility settings
+        if (!isOwner) {
+            String visibility = profile.getProfilePicVisibility();
+            if ("NOBODY".equals(visibility)) {
+                profile.setAvatarUrl(null);
+            }
+            // CONTACTS would need a contacts list - treat same as EVERYONE for now
+        }
+
+        return ResponseEntity.ok(profile);
     }
 
     @PutMapping("/{userId}")
-    @Operation(summary = "Create or Update profile", description = "Updates profile fields partially based on the request body (e.g., avatarUrl, bio).")
+    @Operation(summary = "Create or Update profile", description = "Updates profile fields partially based on the request body (e.g., avatarUrl, bio, profilePicVisibility).")
     public ResponseEntity<?> updateProfile(
             @PathVariable String userId,
             @AuthenticationPrincipal UserDetails userDetails,
@@ -83,6 +109,32 @@ public class ProfileController {
             return ResponseEntity.ok(updated);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{userId}/avatar")
+    @Operation(summary = "Upload profile picture", description = "Uploads a new profile picture (JPEG, PNG, GIF, WebP, max 5MB).")
+    public ResponseEntity<?> uploadAvatar(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam("file") MultipartFile file) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (!user.getId().equals(userId) && !user.getUsername().equals(userId)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Not authorized to upload avatar for this profile"));
+            }
+
+            Profile updated = profileService.uploadAvatar(userId, file);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to upload avatar: " + e.getMessage()));
         }
     }
 

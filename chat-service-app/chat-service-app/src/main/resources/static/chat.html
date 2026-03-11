@@ -15,7 +15,10 @@
             <div class="sidebar-header">
                 <button id="profile-btn" class="profile-btn"
                     style="display: flex; align-items: center; gap: 0.75rem; text-align: left; width: 100%;">
-                    <div class="avatar"><i class="fas fa-user"></i></div>
+                    <div class="avatar" id="sidebar-avatar">
+                        <img id="sidebar-avatar-img" src="" alt="" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                        <i id="sidebar-avatar-icon" class="fas fa-user"></i>
+                    </div>
                     <div class="user-info">
                         <span id="current-user" class="user-name">Loading...</span>
                         <div style="font-size: 0.75rem; color: var(--text-secondary);">My Profile</div>
@@ -95,11 +98,32 @@
 
     <!-- Profile Modal -->
     <div id="profile-modal" class="modal hidden">
-        <div class="profile-avatar-large" style="position:relative;">
-            <i class="fas fa-user"></i>
-            <span id="profile-status-dot" style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid white;"></span>
+        <!-- WhatsApp-style Avatar Upload -->
+        <div class="profile-avatar-upload" id="profile-avatar-container">
+            <div class="profile-avatar-large" id="profile-avatar-display" style="position:relative; cursor:pointer;">
+                <img id="profile-avatar-img" src="" alt="Avatar" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                <i id="profile-avatar-icon" class="fas fa-user"></i>
+                <span id="profile-status-dot" style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid white;z-index:2;"></span>
+            </div>
+            <div class="avatar-camera-overlay" id="avatar-camera-overlay">
+                <i class="fas fa-camera"></i>
+            </div>
+            <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
         </div>
         <h3 style="text-align: center;">My Profile</h3>
+
+        <!-- Profile Picture Visibility -->
+        <div class="modal-section" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border-light);">
+            <div>
+                <label for="profile-pic-visibility" style="margin: 0; font-weight: 500;">Profile Photo</label>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem;">Who can see my profile photo</div>
+            </div>
+            <select id="profile-pic-visibility" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border-light); cursor: pointer;">
+                <option value="EVERYONE">Everyone</option>
+                <option value="CONTACTS">My Contacts</option>
+                <option value="NOBODY">Nobody</option>
+            </select>
+        </div>
 
         <div class="modal-section" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border-light);">
             <div>
@@ -231,7 +255,7 @@
             window.location.href = '/login.html';
         }
     </script>
-    <script type="module" src="assets/js/app.js?v=12"></script>
+    <script type="module" src="assets/js/app.js?v=13"></script>
 </body>
 
 </html>
