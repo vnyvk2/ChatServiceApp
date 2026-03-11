@@ -139,7 +139,7 @@ export async function logout(app) {
         showLogin();
     } else {
         // We are on chat.html without an auth section
-        window.location.href = '/index.html';
+        window.location.href = '/login.html';
     }
 
     showToast('Logged out successfully', 'success');

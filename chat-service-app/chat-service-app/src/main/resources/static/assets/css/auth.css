@@ -33,6 +33,18 @@ body.auth-page,
     margin-bottom: 2rem;
 }
 
+.error-message {
+    color: var(--error-color, #ef4444);
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: var(--radius-md);
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    text-align: center;
+    display: none;
+}
+
 .auth-form {
     display: flex;
     flex-direction: column;
@@ -41,6 +53,31 @@ body.auth-page,
 
 .form-group {
     text-align: left;
+}
+
+.password-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 1rem;
+    cursor: pointer;
+    color: var(--text-secondary, #64748b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+    color: var(--primary, #2563eb);
+}
+
+.password-container .input-field {
+    padding-right: 2.75rem;
 }
 
 .input-field {
