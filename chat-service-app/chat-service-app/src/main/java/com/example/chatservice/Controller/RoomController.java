@@ -180,7 +180,7 @@ public class RoomController {
                 roomData.put("roomType", room.getRoomType().name());
                 roomData.put("isPrivate", room.isPrivate());
 
-                List<com.example.chatservice.Model.Message> recentMessages = messageService.getRecentMessages(room.getId(), 1);
+                List<com.example.chatservice.Model.Message> recentMessages = messageService.getRecentMessages(room.getId(), user.getId(), 1);
                 if (!recentMessages.isEmpty()) {
                     com.example.chatservice.Model.Message lastMsg = recentMessages.get(0);
                     String decryptedText = messageService.decrypt(lastMsg.getEncryptedContent());
@@ -544,6 +544,7 @@ public class RoomController {
     @Operation(summary = "Delete a specific message", description = "Deletes a specific message. Admin can delete any message. Sender can delete their own message.")
     public ResponseEntity<?> deleteMessage(@PathVariable String roomId,
             @PathVariable String messageId,
+            @RequestParam(defaultValue = "false") boolean forEveryone,
             @AuthenticationPrincipal UserDetails principal) {
         if (principal == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
@@ -555,8 +556,20 @@ public class RoomController {
             boolean isAdmin = chatRoomService.isUserRoomAdmin(user.getId(), roomId);
             boolean isSender = message.getSender().getId().equals(user.getId());
 
+            if (!forEveryone) {
+                // Delete for me
+                messageService.deleteMessageForMe(messageId, user.getId());
+                return ResponseEntity.ok(Map.of("message", "Message deleted for you"));
+            }
+
             if (!isAdmin && !isSender) {
-                return ResponseEntity.status(403).body(Map.of("error", "Only admins or the sender can delete messages"));
+                return ResponseEntity.status(403).body(Map.of("error", "Only admins or the sender can delete messages for everyone"));
+            }
+
+            if (isSender && !isAdmin) {
+                if (java.time.Instant.now().isAfter(message.getCreatedAt().plusSeconds(300))) {
+                    return ResponseEntity.status(403).body(Map.of("error", "Messages can only be deleted for everyone within 5 minutes of sending"));
+                }
             }
 
             messageService.deleteMessage(messageId);

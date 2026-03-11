@@ -48,6 +48,8 @@ public class Message {
 
     private Instant editedAt;
 
+    private List<String> deletedForUsers = new ArrayList<>();
+
     public enum MessageType {
         TEXT, IMAGE, FILE, SYSTEM
     }

@@ -79,6 +79,7 @@ export function displayMessages(app, messages) {
         const date = messageData.createdAt ? new Date(messageData.createdAt) : new Date();
         const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         messageElement.dataset.timestamp = timeString;
+        messageElement.dataset.createdAt = messageData.createdAt || new Date().toISOString();
 
         const showTime = timeString !== lastMessageTime;
         lastMessageTime = timeString;
@@ -133,6 +134,7 @@ export function displayMessage(app, messageData, animate = true) {
     const date = messageData.timestamp ? new Date(messageData.timestamp) : new Date();
     const timestamp = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     messageElement.dataset.timestamp = timestamp;
+    messageElement.dataset.createdAt = date.toISOString(); // Always store as ISO string for reliable parsing
 
     const lastMessageElement = messageArea.lastElementChild;
     const lastTime = lastMessageElement ? lastMessageElement.dataset.timestamp : null;
@@ -312,8 +314,9 @@ export function sendMessage(app) {
     }
 
     if (app.editingMessageId) {
+        const editingId = app.editingMessageId; // Store local copy
         // Send edit request instead of sending a new message
-        fetch(`/api/rooms/${app.currentRoom}/messages/${app.editingMessageId}`, {
+        fetch(`/api/messages/rooms/${app.currentRoom}/messages/${editingId}`, {
             method: 'PUT',
             headers: {
                 'Authorization': 'Bearer ' + app.token,
@@ -323,18 +326,19 @@ export function sendMessage(app) {
         }).then(res => {
             if (!res.ok) {
                 res.json().then(data => showToast(data.error || 'Failed to edit', 'error'));
+            } else {
+                // Only clear input and state on suspected success (event will update UI)
+                app.editingMessageId = null;
+                messageInput.value = '';
+                const sendBtn = document.getElementById('send-btn');
+                if (sendBtn) sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+                const cancelEditBtn = document.getElementById('cancel-edit-btn');
+                if (cancelEditBtn) cancelEditBtn.remove();
             }
         }).catch(err => {
             console.error(err);
             showToast('Network error', 'error');
         });
-
-        app.editingMessageId = null;
-        messageInput.value = '';
-        const sendBtn = document.getElementById('send-btn');
-        if (sendBtn) sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
-        const cancelEditBtn = document.getElementById('cancel-edit-btn');
-        if (cancelEditBtn) cancelEditBtn.remove();
         return;
     }
 
@@ -556,9 +560,14 @@ async function showReceiptModal(app, messageId) {
             html += `<div class="receipt-section"><p style="text-align:center;color:#94a3b8;">No receipt data available</p></div>`;
         }
 
-        html += `<div class="modal-actions" style="margin-top: 1rem; border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; gap: 0.5rem; justify-content: space-between;">
-            <button class="btn-primary btn-small" onclick="chatApp.promptEditMessage('${messageId}')" style="flex: 1;"><i class="fas fa-edit"></i> Edit</button>
-            <button class="btn-danger-ghost btn-small" onclick="chatApp.promptDeleteMessage('${messageId}')" style="flex: 1;"><i class="fas fa-trash"></i> Delete</button>
+        const msgEl = document.getElementById('msg-' + messageId);
+        const createdAtStr = msgEl ? msgEl.dataset.createdAt : null;
+        const msgDate = createdAtStr ? new Date(isNaN(createdAtStr) ? createdAtStr : Number(createdAtStr)) : new Date();
+        const isRecent = !isNaN(msgDate.getTime()) && (new Date() - msgDate) < (5 * 60 * 1000);
+
+        html += `<div class="modal-actions" style="margin-top: 1rem; border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            ${isRecent ? `<button class="btn-primary btn-small" onclick="chatApp.promptEditMessage('${messageId}')" style="width:100%;"><i class="fas fa-edit"></i> Edit</button>` : ''}
+            <button class="btn-danger-ghost btn-small" onclick="chatApp.promptDeleteMessage('${messageId}')" style="width:100%;"><i class="fas fa-trash"></i> Delete</button>
         </div>`;
 
         modal.innerHTML = html;
@@ -612,9 +621,16 @@ export async function promptEditMessage(app, messageId) {
  * Prompt user to delete a message 
  */
 export async function promptDeleteMessage(app, messageId) {
+    const msgEl = document.getElementById('msg-' + messageId);
+    if (!msgEl) return;
+    
     // Hide info modal
     const overlay = document.getElementById('receipt-modal-overlay');
     if (overlay) overlay.classList.add('hidden');
+    
+    const createdAtStr = msgEl.dataset.createdAt;
+    const msgDate = createdAtStr ? new Date(isNaN(createdAtStr) ? createdAtStr : Number(createdAtStr)) : new Date();
+    const isRecent = !isNaN(msgDate.getTime()) && (new Date() - msgDate) < (5 * 60 * 1000);
     
     // Create WhatsApp-like custom modal
     let confirmOverlay = document.getElementById('custom-confirm-overlay');
@@ -629,7 +645,8 @@ export async function promptDeleteMessage(app, messageId) {
         <div style="background:white;padding:1.5rem;border-radius:12px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-width:300px;text-align:center;">
             <p style="margin-top:0;font-weight:500;color:#1e293b;margin-bottom:1.5rem;">Delete message?</p>
             <div style="display:flex;flex-direction:column;gap:0.5rem;">
-                <button id="confirm-delete-btn" style="padding:0.6rem;background:white;border:1px solid #e2e8f0;border-radius:8px;color:#ef4444;cursor:pointer;font-weight:500;">Delete for everyone</button>
+                <button id="delete-for-me-btn" style="padding:0.6rem;background:white;border:1px solid #e2e8f0;border-radius:8px;color:#1e293b;cursor:pointer;font-weight:500;">Delete for me</button>
+                ${isRecent ? `<button id="delete-for-everyone-btn" style="padding:0.6rem;background:white;border:1px solid #e2e8f0;border-radius:8px;color:#ef4444;cursor:pointer;font-weight:500;">Delete for everyone</button>` : ''}
                 <button id="cancel-delete-btn" style="padding:0.6rem;background:white;border:1px solid #e2e8f0;border-radius:8px;color:#1e293b;cursor:pointer;font-weight:500;">Cancel</button>
             </div>
         </div>
@@ -640,21 +657,39 @@ export async function promptDeleteMessage(app, messageId) {
         confirmOverlay.style.display = 'none';
     };
 
-    document.getElementById('confirm-delete-btn').onclick = async () => {
+    document.getElementById('delete-for-me-btn').onclick = () => {
+        performDelete(app, messageId, false);
         confirmOverlay.style.display = 'none';
-        try {
-            const response = await fetch(`/api/rooms/${app.currentRoom}/messages/${messageId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': 'Bearer ' + app.token }
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                showToast(error.error || 'Failed to delete message', 'error');
-            }
-        } catch (error) {
-            console.error('Error deleting message:', error);
-            showToast('Network error', 'error');
-        }
     };
+
+    const everyoneBtn = document.getElementById('delete-for-everyone-btn');
+    if (everyoneBtn) {
+        everyoneBtn.onclick = () => {
+            performDelete(app, messageId, true);
+            confirmOverlay.style.display = 'none';
+        }
+    }
+}
+
+async function performDelete(app, messageId, forEveryone) {
+    try {
+        const response = await fetch(`/api/rooms/${app.currentRoom}/messages/${messageId}?forEveryone=${forEveryone}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + app.token }
+        });
+
+        if (response.ok) {
+            if (!forEveryone) {
+                // Manually remove from UI if it was just for me (no WS event will come)
+                const msgEl = document.getElementById('msg-' + messageId);
+                if (msgEl) msgEl.remove();
+            }
+        } else {
+            const error = await response.json();
+            showToast(error.error || 'Failed to delete message', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting message:', error);
+        showToast('Network error', 'error');
+    }
 }

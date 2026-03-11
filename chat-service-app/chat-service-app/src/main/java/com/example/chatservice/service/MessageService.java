@@ -93,6 +93,10 @@ public class MessageService {
             throw new RuntimeException("You can only edit your own messages");
         }
 
+        if (Instant.now().isAfter(message.getCreatedAt().plusSeconds(300))) {
+            throw new RuntimeException("Messages can only be edited within 5 minutes of sending");
+        }
+
         message.setEncryptedContent(cryptoService.encrypt(newContent));
         message.setEditedAt(Instant.now());
         return messageRepository.save(message);
@@ -199,9 +203,9 @@ public class MessageService {
         return message.getReceipts();
     }
 
-    public List<Message> getRecentMessages(String roomId, int limit) {
+    public List<Message> getRecentMessages(String roomId, String userId, int limit) {
         Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
-        return messageRepository.findByRoomIdOrderByCreatedAtDesc(roomId, pageable);
+        return messageRepository.findByRoomIdAndDeletedForUsersNotContainingOrderByCreatedAtDesc(roomId, userId, pageable);
     }
 
     public List<Message> getAllMessagesInRoom(String roomId) {
@@ -220,6 +224,19 @@ public class MessageService {
         messageRepository.deleteById(messageId);
     }
 
+    public void deleteMessageForMe(String messageId, String userId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found"));
+        
+        if (message.getDeletedForUsers() == null) {
+            message.setDeletedForUsers(new ArrayList<>());
+        }
+        if (!message.getDeletedForUsers().contains(userId)) {
+            message.getDeletedForUsers().add(userId);
+            messageRepository.save(message);
+        }
+    }
+
     public void deleteAllMessagesInRoom(String roomId) {
         messageRepository.deleteByRoomId(roomId);
     }
@@ -232,11 +249,11 @@ public class MessageService {
 
     /**
      * Returns a page of messages for a room. Sorted by createdAt descending by
-     * default.
+     * default. Filers out messages the user has deleted for themselves.
      */
-    public Page<Message> getMessages(String roomId, int page, int size) {
+    public Page<Message> getMessages(String roomId, String userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return messageRepository.findByRoomId(roomId, pageable);
+        return messageRepository.findByRoomIdAndDeletedForUsersNotContaining(roomId, userId, pageable);
     }
 
     /**

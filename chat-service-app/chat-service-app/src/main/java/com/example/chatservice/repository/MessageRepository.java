@@ -13,10 +13,10 @@ import java.util.List;
 public interface MessageRepository extends MongoRepository<Message, String> {
 
     // For pagination in MessageService.getMessages()
-    Page<Message> findByRoomId(String roomId, Pageable pageable);
+    Page<Message> findByRoomIdAndDeletedForUsersNotContaining(String roomId, String userId, Pageable pageable);
 
     // Used in getRecentMessages()
-    List<Message> findByRoomIdOrderByCreatedAtDesc(String roomId, Pageable pageable);
+    List<Message> findByRoomIdAndDeletedForUsersNotContainingOrderByCreatedAtDesc(String roomId, String userId, Pageable pageable);
 
     // Used in getAllMessagesInRoom()
     List<Message> findByRoomIdOrderByCreatedAtAsc(String roomId);

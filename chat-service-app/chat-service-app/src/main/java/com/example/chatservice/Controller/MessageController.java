@@ -38,9 +38,12 @@ public class MessageController {
     public ResponseEntity<?> getRoomMessages(
             @PathVariable String roomId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "50") int size,
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
         org.springframework.data.domain.Page<com.example.chatservice.Model.Message> messages = messageService
-                .getMessages(roomId, page, size);
+                .getMessages(roomId, user.getId(), page, size);
         org.springframework.data.domain.Page<MessageDto> dtos = messages.map(msg -> new MessageDto(
                 msg.getId(),
                 new MessageDto.SenderDto(
