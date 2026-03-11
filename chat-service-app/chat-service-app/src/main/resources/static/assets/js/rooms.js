@@ -48,13 +48,16 @@ function displayMyRooms(app, rooms) {
         const descriptionHtml = (room.roomType === 'DIRECT_MESSAGE') ? '' :
             (room.description ? `<div class="room-description">${escapeHtml(room.description)}</div>` : '');
 
+        // Status dot for DM rooms (green=online, grey=offline)
+        const statusDotHtml = (room.roomType === 'DIRECT_MESSAGE')
+            ? `<span class="dm-status-dot" data-room-id="${room.id}" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9ca3af;margin-right:6px;flex-shrink:0;"></span>`
+            : '';
+
         roomElement.innerHTML = `
             <div class="room-item-header">
-                <div class="room-name">${escapeHtml(displayName)}</div>
-                <div class="room-actions-btn">
-                    <button class="btn-icon" onclick="event.stopPropagation(); chatApp.leaveRoom('${room.id}')" title="Leave Room">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </button>
+                <div class="room-name" style="display:flex;align-items:center;">
+                    ${statusDotHtml}
+                    ${escapeHtml(displayName)}
                 </div>
             </div>
             <div class="room-type">${room.roomType.replace('_', ' ')}</div>
@@ -62,6 +65,11 @@ function displayMyRooms(app, rooms) {
         `;
 
         roomList.appendChild(roomElement);
+
+        // Fetch online status for DM rooms
+        if (room.roomType === 'DIRECT_MESSAGE') {
+            fetchDmStatus(app, room.id, roomElement);
+        }
     });
 }
 
@@ -388,6 +396,127 @@ export async function renameRoom(app) {
         }
     } catch (error) {
         console.error('Renaming error:', error);
+        showToast('Network error', 'error');
+    }
+}
+
+/**
+ * Fetch DM other user's online status and update the dot.
+ */
+async function fetchDmStatus(app, roomId, roomElement) {
+    try {
+        const response = await fetch(`/api/rooms/${roomId}/members`, {
+            headers: { 'Authorization': 'Bearer ' + app.token }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            const members = data.members || data;
+            const otherMember = members.find(m => m.username !== app.currentUser.username);
+            if (otherMember) {
+                const dot = roomElement.querySelector('.dm-status-dot');
+                if (dot) {
+                    dot.style.background = otherMember.status === 'ONLINE' ? '#22c55e' : '#9ca3af';
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Could not fetch DM status for room:', roomId);
+    }
+}
+
+/**
+ * Update the DM status dot in the sidebar for a specific room.
+ */
+export function updateDmStatusDot(roomId, status) {
+    const dot = document.querySelector(`.dm-status-dot[data-room-id="${roomId}"]`);
+    if (dot) {
+        dot.style.background = status === 'ONLINE' ? '#22c55e' : '#9ca3af';
+    }
+}
+
+/**
+ * Delete a room (creator only, admin if creator left).
+ */
+export async function deleteRoom(app, roomId) {
+    const targetRoom = roomId || app.currentRoom;
+    if (!targetRoom) return;
+
+    if (!confirm('Are you sure you want to DELETE this room? All messages will be permanently removed.')) return;
+
+    try {
+        const response = await fetch(`/api/rooms/${targetRoom}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + app.token
+            }
+        });
+
+        if (response.ok) {
+            showToast('Room deleted successfully', 'success');
+            loadMyRooms(app);
+
+            if (app.currentRoom === targetRoom) {
+                app.currentRoom = null;
+                document.getElementById('current-room-name').textContent = 'Select a room to start chatting';
+                document.getElementById('chat-input-area').classList.add('hidden');
+                document.getElementById('chat-messages').innerHTML = `
+                    <div class="welcome-message">
+                        <i class="fas fa-comments"></i>
+                        <h3>Welcome to ChatService</h3>
+                        <p>Select a room from the sidebar to start chatting</p>
+                    </div>
+                `;
+                const membersPanel = document.getElementById('members-panel');
+                if (membersPanel) membersPanel.classList.add('hidden');
+            }
+        } else {
+            const error = await response.json();
+            showToast(error.error || 'Failed to delete room', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting room:', error);
+        showToast('Network error. Please try again.', 'error');
+    }
+}
+
+/**
+ * Clear all messages in a room (admin can do server-side clear for everyone).
+ * Regular users do a client-side clear only.
+ */
+export async function clearChat(app, roomId) {
+    const targetRoom = roomId || app.currentRoom;
+    if (!targetRoom) return;
+
+    if (!confirm('Clear all messages in this chat?')) return;
+
+    try {
+        const response = await fetch(`/api/rooms/${targetRoom}/messages`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + app.token
+            }
+        });
+
+        if (response.ok) {
+            showToast('Chat cleared', 'success');
+            // Clear the message area if viewing this room
+            if (app.currentRoom === targetRoom) {
+                document.getElementById('chat-messages').innerHTML = '';
+            }
+        } else {
+            const error = await response.json();
+            // If not admin, do client-side clear
+            if (response.status === 403) {
+                if (app.currentRoom === targetRoom) {
+                    document.getElementById('chat-messages').innerHTML = '';
+                    showToast('Chat cleared locally', 'info');
+                }
+            } else {
+                showToast(error.error || 'Failed to clear chat', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error clearing chat:', error);
         showToast('Network error', 'error');
     }
 }

@@ -115,6 +115,74 @@ public class UserController {
         }
     }
 
+    @GetMapping("/online-status")
+    @Operation(summary = "Get online status setting", description = "Returns whether the authenticated user has online status visibility enabled.")
+    public ResponseEntity<?> getOnlineStatusSetting(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(Map.of("showOnlineStatus", user.isShowOnlineStatus()));
+    }
+
+    @PutMapping("/online-status")
+    @Operation(summary = "Toggle online status visibility", description = "Enables or disables online status (green dot) visibility for the authenticated user.")
+    public ResponseEntity<?> toggleOnlineStatus(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, Boolean> body) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            Boolean enabled = body.get("showOnlineStatus");
+            if (enabled == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "showOnlineStatus is required"));
+            }
+            user.setShowOnlineStatus(enabled);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("showOnlineStatus", user.isShowOnlineStatus()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/last-seen-visibility")
+    @Operation(summary = "Get last seen setting", description = "Returns whether the authenticated user has last seen visibility enabled.")
+    public ResponseEntity<?> getLastSeenVisibility(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(Map.of("lastSeenVisible", user.isLastSeenVisible()));
+    }
+
+    @PutMapping("/last-seen-visibility")
+    @Operation(summary = "Toggle last seen visibility", description = "Enables or disables last seen timestamp visibility. If disabled, user also cannot see others' last seen.")
+    public ResponseEntity<?> toggleLastSeenVisibility(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, Boolean> body) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            Boolean enabled = body.get("lastSeenVisible");
+            if (enabled == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "lastSeenVisible is required"));
+            }
+            user.setLastSeenVisible(enabled);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("lastSeenVisible", user.isLastSeenVisible()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ---- New Endpoints ----
 
     @GetMapping

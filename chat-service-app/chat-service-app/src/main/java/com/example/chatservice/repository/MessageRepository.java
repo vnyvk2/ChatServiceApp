@@ -27,5 +27,8 @@ public interface MessageRepository extends MongoRepository<Message, String> {
     // Find messages in a room where a specific user's receipt has a certain status
     @Query("{'roomId': ?0, 'senderId': {$ne: ?1}, 'receipts': {$elemMatch: {'userId': ?1, 'status': ?2}}}")
     List<Message> findByRoomIdAndReceiptUserIdAndReceiptStatus(String roomId, String userId, String status);
+
+    // Delete all messages in a room
+    void deleteByRoomId(String roomId);
 }
 

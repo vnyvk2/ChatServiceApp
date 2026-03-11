@@ -3,6 +3,7 @@
  */
 import { showToast } from './ui.js';
 import { bubbleRoomToTop } from './messages.js';
+import { updateDmStatusDot, loadMyRooms } from './rooms.js';
 
 /**
  * Connect to WebSocket server via SockJS + STOMP.
@@ -80,6 +81,47 @@ export function subscribeToRoom(app, roomId) {
     // Subscribe to room events
     const eventSub = app.stompClient.subscribe('/topic/rooms/' + roomId + '/events', (message) => {
         const event = JSON.parse(message.body);
+
+        if (event.type === 'ROOM_DELETED') {
+            // Room was deleted - remove from sidebar and reset view if current
+            showToast(event.message || 'Room was deleted', 'info');
+            loadMyRooms(app);
+            if (app.currentRoom === roomId) {
+                app.currentRoom = null;
+                document.getElementById('current-room-name').textContent = 'Select a room to start chatting';
+                document.getElementById('chat-input-area').classList.add('hidden');
+                document.getElementById('chat-messages').innerHTML = `
+                    <div class="welcome-message">
+                        <i class="fas fa-comments"></i>
+                        <h3>Welcome to ChatService</h3>
+                        <p>Select a room from the sidebar to start chatting</p>
+                    </div>
+                `;
+                const membersPanel = document.getElementById('members-panel');
+                if (membersPanel) membersPanel.classList.add('hidden');
+            }
+            return;
+        }
+
+        if (event.type === 'MESSAGES_CLEARED') {
+            if (app.currentRoom === roomId) {
+                document.getElementById('chat-messages').innerHTML = '';
+            }
+            showToast(event.message || 'Chat was cleared', 'info');
+            return;
+        }
+
+        if (event.type === 'MESSAGE_DELETED' && event.messageId) {
+            const msgEl = document.getElementById('msg-' + event.messageId);
+            if (msgEl) msgEl.remove();
+            return;
+        }
+
+        // Handle STATUS_UPDATE for DM sidebar dot
+        if (event.type === 'STATUS_UPDATE' && event.roomId) {
+            updateDmStatusDot(event.roomId, event.user.status);
+        }
+
         app.displayEvent(event);
     });
     app.roomSubscriptions.push(eventSub);

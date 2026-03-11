@@ -6,6 +6,7 @@ import com.example.chatservice.Model.RoomMembership;
 import com.example.chatservice.Model.User;
 import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.service.ChatRoomService;
+import com.example.chatservice.service.MessageService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -28,13 +29,16 @@ public class RoomController {
 
     private final ChatRoomService chatRoomService;
     private final UserRepository userRepository;
+    private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
 
     public RoomController(ChatRoomService chatRoomService,
             UserRepository userRepository,
+            MessageService messageService,
             SimpMessagingTemplate messagingTemplate) {
         this.chatRoomService = chatRoomService;
         this.userRepository = userRepository;
+        this.messageService = messageService;
         this.messagingTemplate = messagingTemplate;
     }
 
@@ -227,7 +231,8 @@ public class RoomController {
 
     @GetMapping("/{roomId}/members")
     @Operation(summary = "Get room members", description = "Retrieves a list of all members in a specific chat room.")
-    public ResponseEntity<?> getRoomMembers(@PathVariable String roomId) {
+    public ResponseEntity<?> getRoomMembers(@PathVariable String roomId,
+            @AuthenticationPrincipal UserDetails principal) {
         List<RoomMembership> members = chatRoomService.getRoomMembers(roomId);
         if (members == null) {
             return ResponseEntity.status(404).body(Map.of("error", "Room not found"));
@@ -236,18 +241,40 @@ public class RoomController {
         ChatRoom room = chatRoomService.findRoomById(roomId).orElse(null);
         boolean roomMuted = room != null && room.isAllMembersMuted();
 
+        // Get requesting user for privacy filtering
+        User requestingUser = null;
+        if (principal != null) {
+            requestingUser = userRepository.findByUsername(principal.getUsername()).orElse(null);
+        }
+        final boolean requesterLastSeenVisible = requestingUser != null && requestingUser.isLastSeenVisible();
+
         return ResponseEntity.ok(Map.of(
             "allMembersMuted", roomMuted,
-            "members", members.stream().map(membership -> Map.of(
-                "id", membership.getUser().getId(),
-                "username", membership.getUser().getUsername(),
-                "displayName", membership.getUser().getDisplayName(),
-                "status", membership.getUser().getStatus(),
-                "phoneNumber", membership.getUser().getPhoneNumber() != null ? membership.getUser().getPhoneNumber() : "",
-                "lastSeenAt", membership.getUser().getLastSeenAt() != null ? membership.getUser().getLastSeenAt() : "",
-                "role", membership.getRole(),
-                "canSendMessages", membership.isCanSendMessages(),
-                "joinedAt", membership.getJoinedAt())).toList()
+            "members", members.stream().map(membership -> {
+                User memberUser = membership.getUser();
+                // Privacy: if member has showOnlineStatus=false, report as OFFLINE
+                String effectiveStatus = memberUser.isShowOnlineStatus()
+                        ? memberUser.getStatus().toString()
+                        : "OFFLINE";
+                // Privacy: hide lastSeenAt if member has lastSeenVisible=false
+                // OR if the requesting user has lastSeenVisible=false (reciprocity)
+                Object effectiveLastSeen = "";
+                if (memberUser.isLastSeenVisible() && requesterLastSeenVisible
+                        && memberUser.getLastSeenAt() != null) {
+                    effectiveLastSeen = memberUser.getLastSeenAt();
+                }
+
+                return Map.of(
+                    "id", membership.getUser().getId(),
+                    "username", membership.getUser().getUsername(),
+                    "displayName", membership.getUser().getDisplayName(),
+                    "status", effectiveStatus,
+                    "phoneNumber", membership.getUser().getPhoneNumber() != null ? membership.getUser().getPhoneNumber() : "",
+                    "lastSeenAt", effectiveLastSeen,
+                    "role", membership.getRole(),
+                    "canSendMessages", membership.isCanSendMessages(),
+                    "joinedAt", membership.getJoinedAt());
+            }).toList()
         ));
     }
 
@@ -430,5 +457,105 @@ public class RoomController {
     }
 
     public record RenameRoomRequest(String name) {
+    }
+
+    @DeleteMapping("/{roomId}")
+    @Operation(summary = "Delete a room", description = "Deletes a room and all its messages. Only the creator can delete; if creator left, any admin can.")
+    public ResponseEntity<?> deleteRoom(@PathVariable String roomId,
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            ChatRoom room = chatRoomService.findRoomById(roomId)
+                    .orElseThrow(() -> new RuntimeException("Room not found"));
+
+            boolean isCreator = room.getCreatedBy() != null && room.getCreatedBy().getId().equals(user.getId());
+            boolean creatorIsActive = room.getCreatedBy() != null
+                    && chatRoomService.isUserActiveMemberOfRoom(room.getCreatedBy().getId(), roomId);
+            boolean isAdmin = chatRoomService.isUserRoomAdmin(user.getId(), roomId);
+
+            // Only creator can delete; if creator left the room, any admin can delete
+            if (!isCreator && !(isAdmin && !creatorIsActive)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only the room creator can delete this room"));
+            }
+
+            // Delete all messages first
+            messageService.deleteAllMessagesInRoom(roomId);
+            // Delete the room
+            chatRoomService.deleteRoom(roomId);
+
+            // Broadcast room deletion event to all members
+            Map<String, Object> deleteEvent = Map.of(
+                    "type", "ROOM_DELETED",
+                    "roomId", roomId,
+                    "message", user.getDisplayName() + " deleted the room",
+                    "timestamp", System.currentTimeMillis());
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", deleteEvent);
+
+            return ResponseEntity.ok(Map.of("message", "Room deleted successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{roomId}/messages")
+    @Operation(summary = "Clear all messages", description = "Deletes all messages in a room. Admin only.")
+    public ResponseEntity<?> clearRoomMessages(@PathVariable String roomId,
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            if (!chatRoomService.isUserRoomAdmin(user.getId(), roomId)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only admins can clear messages"));
+            }
+
+            messageService.deleteAllMessagesInRoom(roomId);
+
+            // Broadcast clear event
+            Map<String, Object> clearEvent = Map.of(
+                    "type", "MESSAGES_CLEARED",
+                    "roomId", roomId,
+                    "message", user.getDisplayName() + " cleared the chat",
+                    "timestamp", System.currentTimeMillis());
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", clearEvent);
+
+            return ResponseEntity.ok(Map.of("message", "All messages cleared"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{roomId}/messages/{messageId}")
+    @Operation(summary = "Delete a specific message", description = "Deletes a specific message. Admin can delete any message.")
+    public ResponseEntity<?> deleteMessage(@PathVariable String roomId,
+            @PathVariable String messageId,
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            if (!chatRoomService.isUserRoomAdmin(user.getId(), roomId)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Only admins can delete messages"));
+            }
+
+            messageService.deleteMessage(messageId);
+
+            // Broadcast deletion event
+            Map<String, Object> deleteEvent = Map.of(
+                    "type", "MESSAGE_DELETED",
+                    "roomId", roomId,
+                    "messageId", messageId,
+                    "timestamp", System.currentTimeMillis());
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", deleteEvent);
+
+            return ResponseEntity.ok(Map.of("message", "Message deleted"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
     }
 }

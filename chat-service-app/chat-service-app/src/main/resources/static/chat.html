@@ -25,13 +25,7 @@
                 <!-- Status Select moved to inside profile or kept here? I'll keep it here for quick access but maybe style it better or just keep it -->
                 <!-- <select id="status-select"> ... </select> -->
             </div>
-            <div style="padding: 0 1.25rem 1rem 1.25rem; border-bottom: 1px solid var(--border-light);">
-                <select id="status-select" style="width: 100%; padding: 0.4rem; font-size: 0.85rem;">
-                    <option value="ONLINE">🟢 Online</option>
-                    <option value="AWAY">🟡 Away</option>
-                    <option value="OFFLINE">⚫ Offline</option>
-                </select>
-            </div>
+
 
             <h3>Menu</h3>
             <div class="action-buttons">
@@ -101,8 +95,23 @@
 
     <!-- Profile Modal -->
     <div id="profile-modal" class="modal hidden">
-        <div class="profile-avatar-large"><i class="fas fa-user"></i></div>
+        <div class="profile-avatar-large" style="position:relative;">
+            <i class="fas fa-user"></i>
+            <span id="profile-status-dot" style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid white;"></span>
+        </div>
         <h3 style="text-align: center;">My Profile</h3>
+
+        <div class="modal-section" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border-light);">
+            <div>
+                <label for="status-select" style="margin: 0; font-weight: 500;">My Status</label>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem;">Set your availability</div>
+            </div>
+            <select id="status-select" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border-light); cursor: pointer;">
+                <option value="ONLINE">🟢 Online</option>
+                <option value="AWAY">🟡 Away</option>
+                <option value="OFFLINE">⚫ Offline</option>
+            </select>
+        </div>
 
         <div class="modal-section">
             <label for="profile-username">Username</label>
@@ -124,6 +133,28 @@
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" id="read-receipts-toggle" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="modal-section" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-top: 1px solid var(--border-light);">
+            <div>
+                <label for="online-status-toggle" style="margin: 0; font-weight: 500;">Show Online Status</label>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem;">Show green dot when you're online</div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="online-status-toggle" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="modal-section" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-top: 1px solid var(--border-light);">
+            <div>
+                <label for="last-seen-toggle" style="margin: 0; font-weight: 500;">Last Seen</label>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem;">If off, you also can't see others' last seen</div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="last-seen-toggle" checked>
                 <span class="toggle-slider"></span>
             </label>
         </div>
@@ -200,7 +231,7 @@
             window.location.href = '/index.html';
         }
     </script>
-    <script type="module" src="assets/js/app.js?v=11"></script>
+    <script type="module" src="assets/js/app.js?v=12"></script>
 </body>
 
 </html>

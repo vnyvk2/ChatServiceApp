@@ -42,6 +42,10 @@ public class User {
 
     private boolean readReceiptsEnabled = true;
 
+    private boolean showOnlineStatus = true;
+
+    private boolean lastSeenVisible = true;
+
     @CreatedDate
     private Instant createdAt;
 
@@ -138,5 +142,21 @@ public class User {
 
     public void setReadReceiptsEnabled(boolean readReceiptsEnabled) {
         this.readReceiptsEnabled = readReceiptsEnabled;
+    }
+
+    public boolean isShowOnlineStatus() {
+        return showOnlineStatus;
+    }
+
+    public void setShowOnlineStatus(boolean showOnlineStatus) {
+        this.showOnlineStatus = showOnlineStatus;
+    }
+
+    public boolean isLastSeenVisible() {
+        return lastSeenVisible;
+    }
+
+    public void setLastSeenVisible(boolean lastSeenVisible) {
+        this.lastSeenVisible = lastSeenVisible;
     }
 }

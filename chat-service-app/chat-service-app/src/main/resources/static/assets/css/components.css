@@ -113,6 +113,8 @@
     border-radius: var(--radius-lg);
     width: 90%;
     max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: var(--shadow-lg);
     animation: scaleIn 0.2s ease;
     z-index: 10000;
@@ -135,8 +137,8 @@
     font-size: 1.25rem;
 }
 
-.modal input,
-.modal select,
+.modal input:not([type="checkbox"]),
+.modal select:not(#status-select),
 .modal textarea {
     width: 100%;
     padding: 0.75rem;

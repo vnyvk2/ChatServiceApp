@@ -207,6 +207,10 @@ public class MessageService {
         messageRepository.deleteById(messageId);
     }
 
+    public void deleteAllMessagesInRoom(String roomId) {
+        messageRepository.deleteByRoomId(roomId);
+    }
+
     public long getMessageCountInRoom(String roomId) {
         return messageRepository.countByRoomId(roomId);
     }

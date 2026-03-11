@@ -97,10 +97,40 @@ export function displayRoomMembers(app, data) {
                     <i class="fas fa-pen"></i> Rename Group
                 </button>
             </div>
+            <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; gap: 6px;">
+                <button onclick="chatApp.clearChat()" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fbbf24; background: #fffbeb; color: #92400e; cursor: pointer;">
+                    <i class="fas fa-broom"></i> Clear Chat
+                </button>
+                <button onclick="chatApp.deleteRoom()" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fca5a5; background: #fef2f2; color: #ef4444; cursor: pointer;">
+                    <i class="fas fa-trash"></i> Delete Room
+                </button>
+            </div>
         `;
     }
 
-    onlineUsers.innerHTML = roomMuteToggleHtml;
+    // Leave Room button for all members (non-DM rooms)
+    let leaveRoomHtml = '';
+    if (app.currentRoomType !== 'DIRECT_MESSAGE') {
+        leaveRoomHtml = `
+            <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: center;">
+                <button onclick="chatApp.leaveRoom('${app.currentRoom}')" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fca5a5; background: transparent; color: #ef4444; cursor: pointer; width: 100%;">
+                    <i class="fas fa-sign-out-alt"></i> Leave Room
+                </button>
+            </div>
+        `;
+        // Non-admin can still clear chat locally
+        if (!amIAdmin) {
+            leaveRoomHtml = `
+                <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; gap: 6px;">
+                    <button onclick="chatApp.clearChat()" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fbbf24; background: #fffbeb; color: #92400e; cursor: pointer;">
+                        <i class="fas fa-broom"></i> Clear Chat
+                    </button>
+                </div>
+            ` + leaveRoomHtml;
+        }
+    }
+
+    onlineUsers.innerHTML = roomMuteToggleHtml + leaveRoomHtml;
 
     members.forEach(member => {
         const memberElement = document.createElement('div');
