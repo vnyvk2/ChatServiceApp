@@ -101,12 +101,29 @@ export async function loadAvailableRooms(app) {
     }
 }
 
+/**
+ * Search public rooms by name query.
+ */
+export async function searchPublicRooms(app, query) {
+    try {
+        const response = await fetch(`/api/rooms/search?query=${encodeURIComponent(query)}`, {
+            headers: { 'Authorization': 'Bearer ' + app.token }
+        });
+        if (response.ok) {
+            const rooms = await response.json();
+            displayAvailableRooms(app, rooms);
+        }
+    } catch (error) {
+        console.error('Error searching rooms:', error);
+    }
+}
+
 function displayAvailableRooms(app, rooms) {
     const availableRooms = document.getElementById('available-rooms');
     availableRooms.innerHTML = '';
 
     if (rooms.length === 0) {
-        availableRooms.innerHTML = '<div class="no-rooms">No public rooms available</div>';
+        availableRooms.innerHTML = '<div class="no-rooms">No public rooms found</div>';
         return;
     }
 
@@ -119,7 +136,7 @@ function displayAvailableRooms(app, rooms) {
             <div class="room-item-name">${escapeHtml(room.name)}</div>
             ${room.description ? `<div class="room-item-desc">${escapeHtml(room.description)}</div>` : ''}
             <div class="room-item-meta">
-                <span>${room.roomType.replace('_', ' ')}</span>
+                <span>${room.memberCount != null ? room.memberCount + ' members' : room.roomType.replace('_', ' ')}</span>
                 <button class="btn-primary btn-small" onclick="event.stopPropagation(); chatApp.joinRoom('${room.id}')">
                     Join Room
                 </button>
@@ -241,9 +258,15 @@ export async function createRoom(app) {
     const description = document.getElementById('room-description').value.trim();
     const roomType = document.getElementById('room-type').value;
     const isPrivate = document.getElementById('room-private').checked;
+    const password = document.getElementById('room-password')?.value.trim() || null;
 
     if (!name) {
         showToast('Room name is required', 'error');
+        return;
+    }
+
+    if (isPrivate && !password) {
+        showToast('Password is required for private rooms', 'error');
         return;
     }
 
@@ -254,18 +277,29 @@ export async function createRoom(app) {
                 'Authorization': 'Bearer ' + app.token,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name, description, roomType, isPrivate })
+            body: JSON.stringify({ name, description, roomType, isPrivate, password })
         });
 
         if (response.ok) {
+            const data = await response.json();
             closeModals();
             loadMyRooms(app);
             loadAvailableRooms(app);
-            showToast('Room created successfully!', 'success');
+
+            // If private room created, show the invite token info
+            if (data.inviteToken) {
+                const inviteLink = `${window.location.origin}/chat.html?joinToken=${data.inviteToken}`;
+                showToast('Private room created! Invite link copied to clipboard.', 'success', 5000);
+                navigator.clipboard.writeText(inviteLink).catch(() => {});
+            } else {
+                showToast('Room created successfully!', 'success');
+            }
 
             document.getElementById('room-name').value = '';
             document.getElementById('room-description').value = '';
             document.getElementById('room-private').checked = false;
+            if (document.getElementById('room-password')) document.getElementById('room-password').value = '';
+            if (document.getElementById('room-password-section')) document.getElementById('room-password-section').style.display = 'none';
         } else {
             const error = await response.json();
             showToast(error.error || 'Failed to create room', 'error');
@@ -568,5 +602,98 @@ export async function clearChat(app, roomId) {
     } catch (error) {
         console.error('Error clearing chat:', error);
         showToast('Network error', 'error');
+    }
+}
+
+/**
+ * Join a private room using room ID and password.
+ */
+export async function joinRoomWithPassword(app, roomId, password) {
+    if (!roomId || !password) {
+        showToast('Room ID and password are required', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/rooms/${roomId}/join`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + app.token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+
+        if (response.ok) {
+            closeModals();
+            loadMyRooms(app);
+            showToast('Joined private room successfully!', 'success');
+        } else {
+            const error = await response.json();
+            showToast(error.error || 'Failed to join room', 'error');
+        }
+    } catch (error) {
+        console.error('Error joining private room:', error);
+        showToast('Network error. Please try again.', 'error');
+    }
+}
+
+/**
+ * Join a room using an invite token.
+ */
+export async function joinRoomByToken(app, token) {
+    if (!token) {
+        showToast('Invite token is required', 'error');
+        return;
+    }
+
+    // Extract token from full URL if pasted
+    try {
+        const url = new URL(token);
+        const tokenParam = url.searchParams.get('joinToken');
+        if (tokenParam) token = tokenParam;
+    } catch (e) {
+        // Not a URL, treat as raw token — that's fine
+    }
+
+    try {
+        const response = await fetch(`/api/rooms/join-by-token?token=${encodeURIComponent(token)}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + app.token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            closeModals();
+            loadMyRooms(app);
+            showToast(`Joined room "${data.roomName}" successfully!`, 'success');
+
+            // Open the room
+            selectRoom(app, data.roomId, data.roomName, 'GROUP_CHAT');
+        } else {
+            const error = await response.json();
+            showToast(error.error || 'Invalid or expired invite link', 'error');
+        }
+    } catch (error) {
+        console.error('Error joining by invite:', error);
+        showToast('Network error. Please try again.', 'error');
+    }
+}
+
+/**
+ * Check URL for invite link token on page load and auto-join.
+ */
+export function checkInviteLink(app) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinToken = urlParams.get('joinToken');
+    if (joinToken) {
+        // Clean the URL
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        // Auto-join after a short delay to ensure WebSocket is connected
+        setTimeout(() => joinRoomByToken(app, joinToken), 1000);
     }
 }

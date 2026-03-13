@@ -30,6 +30,13 @@ public class ChatRoom {
     private ChatRoom.RoomType roomType = RoomType.GROUP_CHAT;
 
     private boolean isPrivate = false;
+
+    // BCrypt-hashed password for private rooms (null for public rooms)
+    private String passwordHash;
+
+    // UUID-based invite token for private rooms (auto-generated)
+    @Indexed(unique = true, sparse = true)
+    private String inviteToken;
     
     // Indicates if only admins can send messages
     private boolean allMembersMuted = false;
@@ -120,5 +127,21 @@ public class ChatRoom {
 
     public void setAllMembersMuted(boolean allMembersMuted) {
         this.allMembersMuted = allMembersMuted;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getInviteToken() {
+        return inviteToken;
+    }
+
+    public void setInviteToken(String inviteToken) {
+        this.inviteToken = inviteToken;
     }
 }

@@ -8,3 +8,5 @@
 8) for rooms, when i clicked join rooms its just shows every room available we dont want like that they need to type that room name then it should visible if its a public room and if its a private room then it should not be visible unless they have the link OR password to join
 9) we dont not use redis here at all isnt it better for instant loading of recent messages?
 10) test cases
+
+for rooms, when i clicked join rooms its just shows every room available we dont want like that only public rooms should visible like that and private rooms should be visible only if they have the link OR password to join think here how do we implement this for scalable and secure way also it shouldnt lag and should be fast and should be able to handle

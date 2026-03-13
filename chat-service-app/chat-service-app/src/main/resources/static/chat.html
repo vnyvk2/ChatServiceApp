@@ -35,9 +35,8 @@
             <!-- Moved Menu to Bottom -->
             <div class="sidebar-footer" style="padding-top: 1rem; border-top: 1px solid var(--border-light); margin-top: auto;">
                 <div class="action-buttons">
-                    <button class="btn-ghost btn-ghost-primary action-icon-btn" id="show-create-room-btn" data-tooltip="Create Room"><i class="fas fa-plus-circle"></i></button>
-                    <button class="btn-ghost action-icon-btn" id="show-join-room-btn" data-tooltip="Join Room"><i class="fas fa-door-open"></i></button>
-                    <button class="btn-ghost action-icon-btn" id="show-dm-btn" data-tooltip="Direct Message"><i class="fas fa-comment-alt"></i></button>
+                    <button class="btn-ghost action-icon-btn" id="show-join-room-btn" data-tooltip="Join / Create Room"><i class="fas fa-door-open"></i></button>
+                    <button class="btn-ghost action-icon-btn" id="show-dm-btn" data-tooltip="New Chat"><i class="fas fa-comment-alt"></i></button>
                 </div>
             </div>
         </div>
@@ -203,39 +202,69 @@
         </div>
     </div>
 
-    <div id="create-room-modal" class="modal hidden">
-        <input type="text" id="room-name" placeholder="Room Name">
-        <textarea id="room-description"></textarea>
-        <select id="room-type">
-            <option value="GROUP_CHAT">Group Chat</option>
-            <option value="BROADCAST">Broadcast</option>
-        </select>
-        <input type="checkbox" id="room-private"> Private?
-        <button id="create-room-btn">Create</button>
-        <button class="cancel-modal-btn">Cancel</button>
-    </div>
-
-    <!-- User Details Modal -->
-    <div id="user-details-modal" class="modal hidden">
-        <div class="profile-avatar-large"><i class="fas fa-user-circle"></i></div>
-        <h3 id="ud-display-name" style="text-align: center;">User Name</h3>
-        
-        <div class="modal-section" style="margin-top: 1rem;">
-            <label>Username</label>
-            <div id="ud-username" style="padding: 0.75rem; background: #f8fafc; border-radius: var(--radius-md); border: 1px solid var(--border-light);"></div>
-        </div>
-        <div class="modal-section">
-            <label>Phone Number</label>
-            <div id="ud-phone" style="padding: 0.75rem; background: #f8fafc; border-radius: var(--radius-md); border: 1px solid var(--border-light);"></div>
-        </div>
-        
-        <div class="modal-actions">
-            <button id="modal-rename-btn" class="btn-confirm" style="background-color: var(--primary);">Rename Chat</button>
-            <button class="cancel-modal-btn btn-cancel">Close</button>
-        </div>
-    </div>
     <div id="join-room-modal" class="modal hidden">
-        <div id="available-rooms"></div>
+        <h3>Room Management</h3>
+        <div class="join-tabs" style="display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid var(--border-light);">
+            <button class="join-tab active" data-tab="search" style="flex:1;padding:0.6rem;border:none;background:none;cursor:pointer;font-weight:500;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;">Search Public</button>
+            <button class="join-tab" data-tab="private" style="flex:1;padding:0.6rem;border:none;background:none;cursor:pointer;font-weight:500;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;">Join Private</button>
+            <button class="join-tab" data-tab="create" style="flex:1;padding:0.6rem;border:none;background:none;cursor:pointer;font-weight:500;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;">Create</button>
+        </div>
+        <div id="join-tab-search" class="join-tab-content">
+            <div class="modal-section">
+                <input type="text" id="room-search-input" placeholder="Search rooms by name...">
+            </div>
+            <div id="available-rooms" style="max-height:300px;overflow-y:auto;"></div>
+        </div>
+        <div id="join-tab-private" class="join-tab-content" style="display:none;">
+            <div class="modal-section">
+                <label for="join-room-id">Room ID</label>
+                <input type="text" id="join-room-id" placeholder="Enter room ID">
+            </div>
+            <div class="modal-section">
+                <label for="join-room-password">Password</label>
+                <input type="password" id="join-room-password" placeholder="Enter room password">
+            </div>
+            <div class="modal-section" style="text-align:center;color:var(--text-secondary);font-size:0.8rem;margin:0.5rem 0;">— or —</div>
+            <div class="modal-section">
+                <label for="join-invite-link">Invite Link / Token</label>
+                <input type="text" id="join-invite-link" placeholder="Paste invite link or token">
+            </div>
+            <div class="modal-actions">
+                <button id="join-private-btn" class="btn-confirm">Join</button>
+            </div>
+        </div>
+        <div id="join-tab-create" class="join-tab-content" style="display:none;">
+            <div class="modal-section">
+                <label for="room-name">Room Name</label>
+                <input type="text" id="room-name" placeholder="Room Name">
+            </div>
+            <div class="modal-section">
+                <label for="room-description">Description</label>
+                <textarea id="room-description" placeholder="Describe your room..."></textarea>
+            </div>
+            <div class="modal-section">
+                <label for="room-type">Room Type</label>
+                <select id="room-type">
+                    <option value="GROUP_CHAT">Group Chat</option>
+                    <option value="BROADCAST">Broadcast</option>
+                </select>
+            </div>
+            <div class="modal-section" style="display:flex;align-items:center;gap:0.5rem;">
+                <input type="checkbox" id="room-private">
+                <label for="room-private" style="margin:0;cursor:pointer;">Private Room</label>
+            </div>
+            <div id="room-password-section" class="modal-section" style="display:none;">
+                <label for="room-password">Room Password</label>
+                <input type="password" id="room-password" placeholder="Set a password for this room">
+                <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">Users will need this password or an invite link to join</div>
+            </div>
+            <div class="modal-actions">
+                <button id="create-room-btn" class="btn-confirm">Create</button>
+            </div>
+        </div>
+        <div style="margin-top:0.5rem;">
+            <button class="cancel-modal-btn btn-cancel" style="width:100%;">Close</button>
+        </div>
     </div>
     <div id="direct-message-modal" class="modal hidden">
         <input type="text" id="dm-phone" placeholder="Phone Number">
@@ -255,7 +284,7 @@
             window.location.href = '/login.html';
         }
     </script>
-    <script type="module" src="assets/js/app.js?v=13"></script>
+    <script type="module" src="assets/js/app.js?v=14"></script>
 </body>
 
 </html>

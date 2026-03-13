@@ -68,7 +68,8 @@ public class RoomController {
                 request.description() != null ? request.description().trim() : "",
                 roomType,
                 request.isPrivate(),
-                creator);
+                creator,
+                request.password());
 
         Map<String, Object> response = new java.util.HashMap<>();
         response.put("id", room.getId());
@@ -77,32 +78,53 @@ public class RoomController {
         response.put("roomType", room.getRoomType().name());
         response.put("isPrivate", room.isPrivate());
         response.put("memberCount", chatRoomService.getRoomMemberCount(room.getId()));
+        if (room.getInviteToken() != null) {
+            response.put("inviteToken", room.getInviteToken());
+        }
 
         return ResponseEntity.status(201).body(response);
     }
 
     @PostMapping("/{roomId}/join")
-    @Operation(summary = "Join a room", description = "Adds the current user to a specific chat room and broadcasts a join event.")
+    @Operation(summary = "Join a room", description = "Adds the current user to a specific chat room. For private rooms, a password is required.")
     public ResponseEntity<?> joinRoom(@PathVariable String roomId,
-            @AuthenticationPrincipal UserDetails principal) {
+            @AuthenticationPrincipal UserDetails principal,
+            @RequestBody(required = false) JoinRoomRequest request) {
         if (principal == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
-        User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
-        chatRoomService.addMember(roomId, user.getId());
+        try {
+            User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
 
-        // Broadcast join notification
-        Map<String, Object> joinEvent = Map.of(
-                "type", "USER_JOINED",
-                "roomId", roomId,
-                "user", Map.of(
-                        "username", user.getUsername(),
-                        "displayName", user.getDisplayName()),
-                "message", user.getDisplayName() + " joined the group",
-                "timestamp", System.currentTimeMillis());
-        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", joinEvent);
+            // Check if room is private and needs password
+            ChatRoom room = chatRoomService.findRoomById(roomId)
+                    .orElseThrow(() -> new RuntimeException("Room not found"));
 
-        return ResponseEntity.ok(Map.of("message", "Successfully joined the room"));
+            if (room.isPrivate()) {
+                String password = request != null ? request.password() : null;
+                if (password == null || password.trim().isEmpty()) {
+                    return ResponseEntity.status(403).body(Map.of("error", "Password required for private rooms"));
+                }
+                chatRoomService.joinRoomWithPassword(roomId, password, user.getId());
+            } else {
+                chatRoomService.addMember(roomId, user.getId());
+            }
+
+            // Broadcast join notification
+            Map<String, Object> joinEvent = Map.of(
+                    "type", "USER_JOINED",
+                    "roomId", roomId,
+                    "user", Map.of(
+                            "username", user.getUsername(),
+                            "displayName", user.getDisplayName()),
+                    "message", user.getDisplayName() + " joined the group",
+                    "timestamp", System.currentTimeMillis());
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", joinEvent);
+
+            return ResponseEntity.ok(Map.of("message", "Successfully joined the room"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/{roomId}/leave")
@@ -135,16 +157,107 @@ public class RoomController {
     public ResponseEntity<?> getAvailableRooms() {
         try {
             List<ChatRoom> rooms = chatRoomService.listPublicRooms();
-            List<Map<String, Object>> result = rooms.stream().map(room -> Map.<String, Object>of(
-                    "id", room.getId(),
-                    "name", room.getName(),
-                    "description", room.getDescription() != null ? room.getDescription() : "",
-                    "roomType", room.getRoomType().name(),
-                    "isPrivate", room.isPrivate())).toList();
+            List<Map<String, Object>> result = rooms.stream().map(room -> {
+                Map<String, Object> data = new java.util.HashMap<>();
+                data.put("id", room.getId());
+                data.put("name", room.getName());
+                data.put("description", room.getDescription() != null ? room.getDescription() : "");
+                data.put("roomType", room.getRoomType().name());
+                data.put("isPrivate", room.isPrivate());
+                data.put("memberCount", chatRoomService.getRoomMemberCount(room.getId()));
+                return data;
+            }).toList();
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("error", "Failed to load rooms"));
+        }
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search public rooms", description = "Searches public rooms by name. Returns only public GROUP_CHAT rooms.")
+    public ResponseEntity<?> searchPublicRooms(@RequestParam(defaultValue = "") String query) {
+        try {
+            List<ChatRoom> rooms = chatRoomService.searchPublicRooms(query);
+            List<Map<String, Object>> result = rooms.stream().map(room -> {
+                Map<String, Object> data = new java.util.HashMap<>();
+                data.put("id", room.getId());
+                data.put("name", room.getName());
+                data.put("description", room.getDescription() != null ? room.getDescription() : "");
+                data.put("roomType", room.getRoomType().name());
+                data.put("isPrivate", false);
+                data.put("memberCount", chatRoomService.getRoomMemberCount(room.getId()));
+                return data;
+            }).toList();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to search rooms"));
+        }
+    }
+
+    @PostMapping("/join-by-token")
+    @Operation(summary = "Join room by invite token", description = "Joins a private room using an invite link token.")
+    public ResponseEntity<?> joinRoomByToken(@RequestParam String token,
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            RoomMembership membership = chatRoomService.joinRoomByInviteToken(token, user.getId());
+            ChatRoom room = membership.getRoom();
+
+            // Broadcast join notification
+            Map<String, Object> joinEvent = Map.of(
+                    "type", "USER_JOINED",
+                    "roomId", room.getId(),
+                    "user", Map.of(
+                            "username", user.getUsername(),
+                            "displayName", user.getDisplayName()),
+                    "message", user.getDisplayName() + " joined the group",
+                    "timestamp", System.currentTimeMillis());
+            messagingTemplate.convertAndSend("/topic/rooms/" + room.getId() + "/events", joinEvent);
+
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("message", "Successfully joined the room");
+            response.put("roomId", room.getId());
+            response.put("roomName", room.getName());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{roomId}/invite-token")
+    @Operation(summary = "Get invite token", description = "Returns the invite token for a private room. Admin only.")
+    public ResponseEntity<?> getInviteToken(@PathVariable String roomId,
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            String token = chatRoomService.getInviteToken(roomId, user.getId());
+            return ResponseEntity.ok(Map.of("inviteToken", token != null ? token : ""));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{roomId}/regenerate-token")
+    @Operation(summary = "Regenerate invite token", description = "Generates a new invite token, invalidating the old one. Admin only.")
+    public ResponseEntity<?> regenerateInviteToken(@PathVariable String roomId,
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+            String newToken = chatRoomService.regenerateInviteToken(roomId, user.getId());
+            return ResponseEntity.ok(Map.of("inviteToken", newToken, "message", "Invite token regenerated"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -386,32 +499,38 @@ public class RoomController {
                 request.description(),
                 ChatRoom.RoomType.GROUP_CHAT,
                 request.isPrivate(),
-                creator);
+                creator,
+                request.password());
 
-        // If it's a private room and initial members are specified, add them
+        // If it's a private room and initial members are specified, add them (bypass private check)
         if (request.isPrivate() && request.initialMembers() != null) {
             for (String memberIdentifier : request.initialMembers()) {
                 User member = userRepository.findByUsername(memberIdentifier)
                         .orElse(userRepository.findByPhoneNumber(memberIdentifier).orElse(null));
                 if (member != null) {
-                    chatRoomService.addMember(room.getId(), member.getId());
+                    chatRoomService.addMember(room.getId(), member.getId(), true);
                 }
             }
         }
 
-        return ResponseEntity.ok(Map.of(
-                "id", room.getId(),
-                "name", room.getName(),
-                "description", room.getDescription(),
-                "roomType", room.getRoomType(),
-                "isPrivate", room.isPrivate(),
-                "memberCount", chatRoomService.getRoomMemberCount(room.getId())));
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("id", room.getId());
+        response.put("name", room.getName());
+        response.put("description", room.getDescription());
+        response.put("roomType", room.getRoomType());
+        response.put("isPrivate", room.isPrivate());
+        response.put("memberCount", chatRoomService.getRoomMemberCount(room.getId()));
+        if (room.getInviteToken() != null) {
+            response.put("inviteToken", room.getInviteToken());
+        }
+        return ResponseEntity.ok(response);
     }
 
     public record CreateRoomWithOptionsRequest(
             @NotBlank @Size(min = 1, max = 100) String name,
             @Size(max = 500) String description,
             boolean isPrivate,
+            String password,
             List<String> initialMembers // usernames or phone numbers
     ) {
     }
@@ -420,7 +539,12 @@ public class RoomController {
             @NotBlank @Size(min = 1, max = 100) String name,
             @Size(max = 500) String description,
             String roomType, // accept string from JSON
-            boolean isPrivate) {
+            boolean isPrivate,
+            String password) {
+    }
+
+    public record JoinRoomRequest(
+            String password) {
     }
 
     public record DirectMessageRequest(

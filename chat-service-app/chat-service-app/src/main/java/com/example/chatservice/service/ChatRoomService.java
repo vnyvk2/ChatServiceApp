@@ -7,11 +7,13 @@ import com.example.chatservice.repository.ChatRoomRepository;
 import com.example.chatservice.repository.RoomMembershipRepository;
 import com.example.chatservice.repository.UserRepository;
 import org.springframework.lang.NonNull;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ChatRoomService {
@@ -19,23 +21,40 @@ public class ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final RoomMembershipRepository membershipRepository;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public ChatRoomService(ChatRoomRepository chatRoomRepository,
             RoomMembershipRepository membershipRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder) {
         this.chatRoomRepository = chatRoomRepository;
         this.membershipRepository = membershipRepository;
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public ChatRoom createRoom(String name, String description, ChatRoom.RoomType roomType,
             boolean isPrivate, User creator) {
+        return createRoom(name, description, roomType, isPrivate, creator, null);
+    }
+
+    public ChatRoom createRoom(String name, String description, ChatRoom.RoomType roomType,
+            boolean isPrivate, User creator, String rawPassword) {
         ChatRoom room = new ChatRoom();
         room.setName(name);
         room.setDescription(description);
         room.setRoomType(roomType);
         room.setPrivate(isPrivate);
         room.setCreatedBy(creator);
+
+        // For private rooms: hash password and generate invite token
+        if (isPrivate) {
+            if (rawPassword != null && !rawPassword.trim().isEmpty()) {
+                room.setPasswordHash(passwordEncoder.encode(rawPassword));
+            }
+            room.setInviteToken(UUID.randomUUID().toString());
+        }
+
         room = chatRoomRepository.save(room);
 
         // Add creator as admin
@@ -89,8 +108,22 @@ public class ChatRoomService {
     }
 
     public RoomMembership addMember(@NonNull String roomId, @NonNull String userId) {
+        return addMember(roomId, userId, false);
+    }
+
+    /**
+     * Add a member to a room. If bypassPrivateCheck is false (default), private rooms
+     * will be rejected — callers must use joinRoomWithPassword or joinRoomByInviteToken instead.
+     */
+    public RoomMembership addMember(@NonNull String roomId, @NonNull String userId, boolean bypassPrivateCheck) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found"));
+
+        // Block direct joining of private rooms unless bypassed (password/token validated)
+        if (room.isPrivate() && !bypassPrivateCheck) {
+            throw new RuntimeException("This is a private room. Use a password or invite link to join.");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -114,6 +147,71 @@ public class ChatRoomService {
         membership.setRole(RoomMembership.Role.MEMBER);
         membership.setActive(true);
         return membershipRepository.save(membership);
+    }
+
+    // --- Private Room Join Methods ---
+
+    public RoomMembership joinRoomWithPassword(@NonNull String roomId, @NonNull String rawPassword, @NonNull String userId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+
+        if (!room.isPrivate()) {
+            // Public room — just add directly
+            return addMember(roomId, userId, true);
+        }
+
+        if (room.getPasswordHash() == null) {
+            throw new RuntimeException("This room does not have a password set. Use an invite link to join.");
+        }
+
+        if (!passwordEncoder.matches(rawPassword, room.getPasswordHash())) {
+            throw new RuntimeException("Incorrect room password");
+        }
+
+        return addMember(roomId, userId, true);
+    }
+
+    public RoomMembership joinRoomByInviteToken(@NonNull String inviteToken, @NonNull String userId) {
+        ChatRoom room = chatRoomRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired invite link"));
+
+        return addMember(room.getId(), userId, true);
+    }
+
+    // --- Search ---
+
+    public List<ChatRoom> searchPublicRooms(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return listPublicRooms();
+        }
+        return chatRoomRepository.findByNameContainingIgnoreCaseAndIsPrivateFalseAndRoomType(
+                query.trim(), ChatRoom.RoomType.GROUP_CHAT);
+    }
+
+    // --- Invite Token Management ---
+
+    public String regenerateInviteToken(@NonNull String roomId, @NonNull String adminUserId) {
+        if (!isUserRoomAdmin(adminUserId, roomId)) {
+            throw new RuntimeException("Only admins can regenerate invite tokens");
+        }
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+        if (!room.isPrivate()) {
+            throw new RuntimeException("Only private rooms have invite tokens");
+        }
+        String newToken = UUID.randomUUID().toString();
+        room.setInviteToken(newToken);
+        chatRoomRepository.save(room);
+        return newToken;
+    }
+
+    public String getInviteToken(@NonNull String roomId, @NonNull String adminUserId) {
+        if (!isUserRoomAdmin(adminUserId, roomId)) {
+            throw new RuntimeException("Only admins can view invite tokens");
+        }
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+        return room.getInviteToken();
     }
 
     public void removeMember(String roomId, String userId) {

@@ -13,12 +13,12 @@
  *   ui.js        - Toasts, modals, layout helpers, escapeHtml
  */
 
-import { login, register, logout, showLogin, showRegister } from './auth.js?v=13';
-import { connectWebSocket, updateUserStatus } from './websocket.js?v=13';
-import { loadMyRooms, loadAvailableRooms, selectRoom, createRoom, joinRoom, leaveRoom, startDirectMessage, renameRoom, deleteRoom, clearChat } from './rooms.js?v=13';
-import { loadMessages, displayMessage, displayEvent, displayTyping, sendMessage, handleTyping, sendDeliveryAck, sendSeenAck, updateMessageStatuses, promptEditMessage, promptDeleteMessage } from './messages.js?v=13';
-import { loadRoomMembers, removeMember, toggleMemberMute, toggleAdminRole, toggleRoomMute } from './members.js?v=13';
-import { showToast, closeModals, showModal, adjustLayout, escapeHtml } from './ui.js?v=13';
+import { login, register, logout, showLogin, showRegister } from './auth.js?v=14';
+import { connectWebSocket, updateUserStatus } from './websocket.js?v=14';
+import { loadMyRooms, loadAvailableRooms, selectRoom, createRoom, joinRoom, leaveRoom, startDirectMessage, renameRoom, deleteRoom, clearChat, searchPublicRooms, joinRoomWithPassword, joinRoomByToken, checkInviteLink } from './rooms.js?v=14';
+import { loadMessages, displayMessage, displayEvent, displayTyping, sendMessage, handleTyping, sendDeliveryAck, sendSeenAck, updateMessageStatuses, promptEditMessage, promptDeleteMessage } from './messages.js?v=14';
+import { loadRoomMembers, removeMember, toggleMemberMute, toggleAdminRole, toggleRoomMute } from './members.js?v=14';
+import { showToast, closeModals, showModal, adjustLayout, escapeHtml } from './ui.js?v=14';
 
 class ChatApp {
     constructor() {
@@ -113,6 +113,8 @@ class ChatApp {
         this.fetchOnlineStatusSetting();
         this.fetchLastSeenSetting();
         this.fetchMyProfile();
+        checkInviteLink(this);
+        this.requestNotificationPermission();
     }
 
     // --- Rooms (delegates to rooms.js) ---
@@ -126,6 +128,9 @@ class ChatApp {
     renameRoom() { return renameRoom(this); }
     deleteRoom(roomId) { return deleteRoom(this, roomId); }
     clearChat(roomId) { return clearChat(this, roomId); }
+    searchPublicRooms(query) { return searchPublicRooms(this, query); }
+    joinRoomWithPassword(roomId, password) { return joinRoomWithPassword(this, roomId, password); }
+    joinRoomByToken(token) { return joinRoomByToken(this, token); }
 
     // --- Messages (delegates to messages.js) ---
     loadMessages(roomId) { return loadMessages(this, roomId); }
@@ -151,6 +156,14 @@ class ChatApp {
     showToast(msg, type, dur) { return showToast(msg, type, dur); }
     closeModals() { return closeModals(); }
     escapeHtml(text) { return escapeHtml(text); }
+
+    requestNotificationPermission() {
+        if ("Notification" in window) {
+            if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+    }
 
     // --- Status ---
     updateStatus() {
@@ -589,7 +602,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('show-login-btn')?.addEventListener('click', () => chatApp.showLogin());
 
     // Main Chat View Button Listeners
-    document.getElementById('show-create-room-btn')?.addEventListener('click', () => chatApp.showCreateRoom());
     document.getElementById('show-join-room-btn')?.addEventListener('click', () => chatApp.showJoinRoom());
     document.getElementById('show-dm-btn')?.addEventListener('click', () => chatApp.showDirectMessage());
 
@@ -644,4 +656,66 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('last-seen-toggle')?.addEventListener('change', () => chatApp.toggleLastSeen());
 
     console.log("app.js loaded and ChatApp initialized with ES6 modules ✅");
+
+    // --- Room Private Checkbox Toggle ---
+    document.getElementById('room-private')?.addEventListener('change', (e) => {
+        const passwordSection = document.getElementById('room-password-section');
+        if (passwordSection) {
+            passwordSection.style.display = e.target.checked ? 'block' : 'none';
+        }
+    });
+
+    // --- Join Room Tab Switching ---
+    document.querySelectorAll('.join-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.join-tab').forEach(t => {
+                t.classList.remove('active');
+                t.style.borderBottomColor = 'transparent';
+                t.style.color = 'var(--text-secondary)';
+            });
+            tab.classList.add('active');
+            tab.style.borderBottomColor = 'var(--primary)';
+            tab.style.color = 'var(--primary)';
+
+            const tabName = tab.dataset.tab;
+            document.querySelectorAll('.join-tab-content').forEach(c => c.style.display = 'none');
+            const targetContent = document.getElementById('join-tab-' + tabName);
+            if (targetContent) targetContent.style.display = 'block';
+        });
+    });
+    // Set initial active tab style
+    const initialTab = document.querySelector('.join-tab.active');
+    if (initialTab) {
+        initialTab.style.borderBottomColor = 'var(--primary)';
+        initialTab.style.color = 'var(--primary)';
+    }
+
+    // --- Room Search Input (debounced) ---
+    let searchTimer = null;
+    document.getElementById('room-search-input')?.addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        const query = e.target.value.trim();
+        searchTimer = setTimeout(() => {
+            if (query.length > 0) {
+                chatApp.searchPublicRooms(query);
+            } else {
+                chatApp.loadAvailableRooms();
+            }
+        }, 300);
+    });
+
+    // --- Join Private Room Button ---
+    document.getElementById('join-private-btn')?.addEventListener('click', () => {
+        const roomId = document.getElementById('join-room-id')?.value.trim();
+        const password = document.getElementById('join-room-password')?.value.trim();
+        const inviteLink = document.getElementById('join-invite-link')?.value.trim();
+
+        if (inviteLink) {
+            chatApp.joinRoomByToken(inviteLink);
+        } else if (roomId && password) {
+            chatApp.joinRoomWithPassword(roomId, password);
+        } else {
+            showToast('Enter a room ID + password, or paste an invite link', 'error');
+        }
+    });
 });

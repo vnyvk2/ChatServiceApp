@@ -16,4 +16,8 @@ public interface ChatRoomRepository extends MongoRepository<ChatRoom, String> {
     List<ChatRoom> findByIsPrivateFalseAndRoomType(ChatRoom.RoomType roomType);
 
     Optional<ChatRoom> findByNameAndRoomType(String name, ChatRoom.RoomType roomType);
+
+    List<ChatRoom> findByNameContainingIgnoreCaseAndIsPrivateFalseAndRoomType(String name, ChatRoom.RoomType roomType);
+
+    Optional<ChatRoom> findByInviteToken(String inviteToken);
 }

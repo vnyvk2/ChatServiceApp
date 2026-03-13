@@ -2,7 +2,7 @@
  * WebSocket Module - Manages STOMP/WebSocket connection and subscriptions.
  */
 import { showToast } from './ui.js';
-import { bubbleRoomToTop } from './messages.js';
+import { bubbleRoomToTop, updateSidebarLastMessage } from './messages.js';
 import { updateDmStatusDot, loadMyRooms } from './rooms.js';
 
 /**
@@ -57,7 +57,24 @@ function onWebSocketConnected(app) {
         if (notification.type === 'NEW_MESSAGE') {
             console.log('Got global notification for room: ' + notification.roomId);
             if (notification.roomId !== app.currentRoom) {
+                // Send delivery ack since the message reached the client
+                app.stompClient.send('/app/rooms/' + notification.roomId + '/delivered', {}, '{}');
+
                 bubbleRoomToTop(notification.roomId);
+                updateSidebarLastMessage(notification.roomId, notification.sender, notification.text);
+                
+                if ("Notification" in window && Notification.permission === "granted") {
+                    const title = `New message from ${notification.sender}`;
+                    const n = new Notification(title, {
+                        body: notification.text
+                    });
+                    n.onclick = function () {
+                        window.focus();
+                        const roomItem = document.querySelector(`.room-item[data-room-id="${notification.roomId}"]`);
+                        if (roomItem) roomItem.click();
+                        this.close();
+                    };
+                }
             }
         }
     });

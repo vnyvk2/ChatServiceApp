@@ -190,6 +190,24 @@ export function displayMessage(app, messageData, animate = true) {
         bubbleRoomToTop(messageData.roomId);
         updateSidebarLastMessage(messageData.roomId, messageData.sender.displayName, messageData.text);
     }
+
+    // Desktop Notification logic
+    if (!isOwnMessage && animate) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            if (document.hidden) {
+                const title = messageData.roomId.startsWith('DM_') 
+                    ? `New message from ${messageData.sender.displayName}` 
+                    : `New message in group from ${messageData.sender.displayName}`;
+                const notification = new Notification(title, {
+                    body: messageData.text
+                });
+                notification.onclick = function () {
+                    window.focus();
+                    this.close();
+                };
+            }
+        }
+    }
 }
 
 export function updateSidebarLastMessage(roomId, senderName, text) {
