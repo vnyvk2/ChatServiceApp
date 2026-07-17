@@ -4,14 +4,14 @@ import com.example.chatservice.Model.User;
 import com.example.chatservice.exception.DuplicateResourceException;
 import com.example.chatservice.exception.ResourceNotFoundException;
 import com.example.chatservice.repository.UserRepository;
-import org.springframework.lang.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -35,28 +35,33 @@ public class UserService {
     // ---- New: register and authenticate ----
     public User registerUser(String username, String rawPassword, String displayName, String email,
             String phoneNumber) {
-        if (userRepository.existsByUsername(username)) {
+        String normalizedUsername = username != null ? username.trim() : null;
+        String normalizedEmail = email != null && !email.isBlank() ? email.trim().toLowerCase() : null;
+        String normalizedPhone = phoneNumber != null && !phoneNumber.isBlank() ? phoneNumber.trim() : null;
+
+        if (normalizedUsername != null && userRepository.existsByUsername(normalizedUsername)) {
             throw new DuplicateResourceException("Username already exists");
         }
-        if (email != null && userRepository.existsByEmail(email)) {
+        if (normalizedEmail != null && userRepository.existsByEmail(normalizedEmail)) {
             throw new DuplicateResourceException("Email already in use");
         }
-        if (phoneNumber != null && !phoneNumber.isBlank() && userRepository.existsByPhoneNumber(phoneNumber)) {
+        if (normalizedPhone != null && userRepository.existsByPhoneNumber(normalizedPhone)) {
             throw new DuplicateResourceException("Phone number already in use");
         }
 
         User user = new User();
-        user.setUsername(username);
+        user.setUsername(normalizedUsername);
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
-        user.setDisplayName(displayName != null ? displayName : username);
-        user.setEmail(email);
-        user.setPhoneNumber(phoneNumber);
+        user.setDisplayName(displayName != null && !displayName.isBlank() ? displayName.trim() : normalizedUsername);
+        user.setEmail(normalizedEmail);
+        user.setPhoneNumber(normalizedPhone);
         user.setStatus(User.UserStatus.OFFLINE);
         return userRepository.save(user);
     }
 
     public User authenticate(String username, String rawPassword) {
-        User user = userRepository.findByUsername(username)
+        String normalizedUsername = username != null ? username.trim() : "";
+        User user = userRepository.findByUsername(normalizedUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid username or password"));
 
         if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
@@ -155,26 +160,35 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (username != null && !username.isBlank() && !user.getUsername().equals(username)) {
-            if (userRepository.existsByUsername(username)) {
-                throw new DuplicateResourceException("Username already taken");
+        if (username != null && !username.isBlank()) {
+            String normalizedUsername = username.trim();
+            if (!user.getUsername().equals(normalizedUsername)) {
+                if (userRepository.existsByUsername(normalizedUsername)) {
+                    throw new DuplicateResourceException("Username already taken");
+                }
+                user.setUsername(normalizedUsername);
+                user.setDisplayName(normalizedUsername);
             }
-            user.setUsername(username);
-            user.setDisplayName(username);
         }
 
-        if (phoneNumber != null && !phoneNumber.isBlank() && !phoneNumber.equals(user.getPhoneNumber())) {
-            if (userRepository.existsByPhoneNumber(phoneNumber)) {
-                throw new DuplicateResourceException("Phone number already taken");
+        if (phoneNumber != null && !phoneNumber.isBlank()) {
+            String normalizedPhone = phoneNumber.trim();
+            if (!normalizedPhone.equals(user.getPhoneNumber())) {
+                if (userRepository.existsByPhoneNumber(normalizedPhone)) {
+                    throw new DuplicateResourceException("Phone number already taken");
+                }
+                user.setPhoneNumber(normalizedPhone);
             }
-            user.setPhoneNumber(phoneNumber);
         }
 
-        if (email != null && !email.isBlank() && !email.equals(user.getEmail())) {
-            if (userRepository.existsByEmail(email)) {
-                throw new DuplicateResourceException("Email already taken");
+        if (email != null && !email.isBlank()) {
+            String normalizedEmail = email.trim().toLowerCase();
+            if (!normalizedEmail.equals(user.getEmail())) {
+                if (userRepository.existsByEmail(normalizedEmail)) {
+                    throw new DuplicateResourceException("Email already taken");
+                }
+                user.setEmail(normalizedEmail);
             }
-            user.setEmail(email);
         }
 
         return userRepository.save(user);
@@ -253,6 +267,16 @@ public class UserService {
         user.setLastSeenVisible(enabled);
         userRepository.save(user);
         return user.isLastSeenVisible();
+    }
+
+    public void invalidateUserTokens(String username) {
+        if (username == null || username.isBlank()) {
+            return;
+        }
+        userRepository.findByUsername(username.trim()).ifPresent(user -> {
+            user.setTokenInvalidBefore(Instant.now());
+            userRepository.save(user);
+        });
     }
 }
 

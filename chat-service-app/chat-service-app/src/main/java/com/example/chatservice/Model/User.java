@@ -40,6 +40,8 @@ public class User {
 
     private Instant lastSeenAt;
 
+    private Instant tokenInvalidBefore;
+
     private boolean readReceiptsEnabled = true;
 
     private boolean showOnlineStatus = true;
@@ -57,6 +59,14 @@ public class User {
 
     public enum UserStatus {
         ONLINE, OFFLINE, AWAY
+    }
+
+    public Instant getTokenInvalidBefore() {
+        return tokenInvalidBefore;
+    }
+
+    public void setTokenInvalidBefore(Instant tokenInvalidBefore) {
+        this.tokenInvalidBefore = tokenInvalidBefore;
     }
 
     // Legacy compatibility

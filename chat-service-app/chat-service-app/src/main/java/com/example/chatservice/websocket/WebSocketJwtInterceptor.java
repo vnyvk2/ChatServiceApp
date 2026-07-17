@@ -1,6 +1,8 @@
 package com.example.chatservice.websocket;
 
 import com.example.chatservice.security.JwtService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class WebSocketJwtInterceptor implements ChannelInterceptor {
 
+    private static final Logger log = LoggerFactory.getLogger(WebSocketJwtInterceptor.class);
+
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
@@ -32,12 +36,12 @@ public class WebSocketJwtInterceptor implements ChannelInterceptor {
         if (accessor != null) {
             if (StompCommand.CONNECT.equals(accessor.getCommand())) {
                 String authToken = accessor.getFirstNativeHeader("Authorization");
-                System.out.println("🔌 WebSocket CONNECT request received");
+                log.debug("🔌 WebSocket CONNECT request received");
                 if (authToken != null && authToken.startsWith("Bearer ")) {
                     String token = authToken.substring(7);
                     try {
                         String username = jwtService.extractUsername(token);
-                        System.out.println("👤 Extracted username from token: " + username);
+                        log.debug("👤 Extracted username from token: {}", username);
 
                         if (username != null && jwtService.isTokenValid(token, username)) {
                             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -53,25 +57,23 @@ public class WebSocketJwtInterceptor implements ChannelInterceptor {
                             // Store in session attributes for later retrieval
                             accessor.getSessionAttributes().put("SPRING_SECURITY_CONTEXT", authentication);
 
-                            System.out.println("✅ WebSocket authentication successful for user: " + username);
+                            log.info("✅ WebSocket authentication successful for user: {}", username);
                         } else {
-                            System.err.println("❌ Token validation failed for user: " + username);
+                            log.warn("❌ Token validation failed for user: {}", username);
                         }
                     } catch (Exception e) {
-                        // Log the exception but don't break the connection
-                        System.err.println("❌ JWT validation failed: " + e.getMessage());
-                        e.printStackTrace();
+                        // Log the exception cleanly without breaking connection
+                        log.warn("❌ JWT validation failed: {}", e.getMessage());
                     }
                 } else {
-                    System.err.println("⚠️ No valid Authorization header found in WebSocket CONNECT request");
+                    log.debug("⚠️ No valid Authorization header found in WebSocket CONNECT request");
                 }
             } else if (StompCommand.SEND.equals(accessor.getCommand())) {
-                System.out.println("📨 WebSocket SEND frame received");
-                System.out.println("📍 Destination: " + accessor.getDestination());
+                log.debug("📨 WebSocket SEND frame received to destination: {}", accessor.getDestination());
 
                 // Try to get user from accessor first
                 if (accessor.getUser() != null) {
-                    System.out.println("👤 User from accessor: " + accessor.getUser().getName());
+                    log.debug("👤 User from accessor: {}", accessor.getUser().getName());
                     if (accessor.getUser() instanceof UsernamePasswordAuthenticationToken) {
                         SecurityContextHolder.getContext().setAuthentication(
                                 (UsernamePasswordAuthenticationToken) accessor.getUser());
@@ -81,13 +83,13 @@ public class WebSocketJwtInterceptor implements ChannelInterceptor {
                     Object auth = accessor.getSessionAttributes().get("SPRING_SECURITY_CONTEXT");
                     if (auth instanceof UsernamePasswordAuthenticationToken) {
                         UsernamePasswordAuthenticationToken authentication = (UsernamePasswordAuthenticationToken) auth;
-                        System.out.println("👤 User from session: " + authentication.getName());
+                        log.debug("👤 User from session: {}", authentication.getName());
 
                         // Set it back to accessor and SecurityContext
                         accessor.setUser(authentication);
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                     } else {
-                        System.err.println("❌ No authentication found in session attributes!");
+                        log.warn("❌ No authentication found in session attributes!");
                     }
                 }
             }

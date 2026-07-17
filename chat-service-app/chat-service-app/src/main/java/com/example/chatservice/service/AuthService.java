@@ -6,8 +6,10 @@ import com.example.chatservice.Dto.response.UserSummaryResponse;
 import com.example.chatservice.Model.User;
 import com.example.chatservice.exception.AuthenticationFailedException;
 import com.example.chatservice.security.JwtService;
+import com.example.chatservice.security.UserPrincipal;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -53,29 +55,30 @@ public class AuthService {
      * and returns an AuthResponse with a JWT token.
      */
     public AuthResponse login(String username, String password) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password));
+        String normalizedUsername = username != null ? username.trim() : "";
+        Authentication auth = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(normalizedUsername, password));
 
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new AuthenticationFailedException("Invalid credentials"));
+        User user = ((UserPrincipal) auth.getPrincipal()).getUser();
 
         userService.updateUserStatus(user.getId(), User.UserStatus.ONLINE);
 
-        String token = jwtService.generateToken(username, new HashMap<>());
+        String token = jwtService.generateToken(user.getUsername(), new HashMap<>());
 
         return buildAuthResponse(token, user, User.UserStatus.ONLINE.toString());
     }
 
     /**
-     * Logs out the user by setting their status to OFFLINE.
+     * Logs out the user by setting their status to OFFLINE and invalidating tokens.
      */
     public void logout(String username) {
-        if (username == null) {
+        if (username == null || username.isBlank()) {
             return;
         }
-        User user = userService.findByUsername(username)
+        User user = userService.findByUsername(username.trim())
                 .orElseThrow(() -> new AuthenticationFailedException("User not found"));
         userService.updateUserStatus(user.getId(), User.UserStatus.OFFLINE);
+        userService.invalidateUserTokens(username.trim());
     }
 
     /**
