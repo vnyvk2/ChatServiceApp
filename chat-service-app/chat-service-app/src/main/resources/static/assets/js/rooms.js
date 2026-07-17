@@ -137,11 +137,16 @@ function displayAvailableRooms(app, rooms) {
             ${room.description ? `<div class="room-item-desc">${escapeHtml(room.description)}</div>` : ''}
             <div class="room-item-meta">
                 <span>${room.memberCount != null ? room.memberCount + ' members' : room.roomType.replace('_', ' ')}</span>
-                <button class="btn-primary btn-small" onclick="event.stopPropagation(); chatApp.joinRoom('${room.id}')">
+                <button class="btn-primary btn-small join-room-btn">
                     Join Room
                 </button>
             </div>
         `;
+
+        roomElement.querySelector('.join-room-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            joinRoom(app, room.id);
+        });
 
         availableRooms.appendChild(roomElement);
     });

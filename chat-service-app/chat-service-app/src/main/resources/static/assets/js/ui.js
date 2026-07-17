@@ -3,13 +3,20 @@
  */
 
 export function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
 export function showToast(message, type = 'info', duration = 5000) {
-    const toastContainer = document.getElementById('toast-container');
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
 
@@ -43,12 +50,15 @@ export function showToast(message, type = 'info', duration = 5000) {
 }
 
 export function showModal(modalId) {
-    document.getElementById('modal-overlay').classList.remove('hidden');
-    document.getElementById(modalId).classList.remove('hidden');
+    const overlay = document.getElementById('modal-overlay');
+    const modal = document.getElementById(modalId);
+    if (overlay) overlay.classList.remove('hidden');
+    if (modal) modal.classList.remove('hidden');
 }
 
 export function closeModals() {
-    document.getElementById('modal-overlay').classList.add('hidden');
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) overlay.classList.add('hidden');
     document.querySelectorAll('.modal').forEach(modal => {
         modal.classList.add('hidden');
     });
@@ -74,7 +84,7 @@ export function adjustLayout() {
 }
 
 export function setButtonLoading(buttonType, isLoading) {
-    const button = document.getElementById(`${buttonType}-btn`);
+    const button = document.getElementById(`${buttonType}-btn`) || document.querySelector('button[type="submit"]');
     if (!button) return;
 
     button.disabled = isLoading;

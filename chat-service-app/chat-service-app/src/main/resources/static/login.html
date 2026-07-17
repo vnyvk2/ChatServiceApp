@@ -22,38 +22,21 @@
                     <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 </span>
             </div>
-            <button type="submit" class="btn-primary">Sign In</button>
+            <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
         </form>
         <div class="auth-footer">
             <p>Don't have an account? <a href="/signup.html">Create account</a></p>
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { login } from './assets/js/auth.js?v=14';
         document.getElementById("loginForm").addEventListener("submit", async function (e) {
             e.preventDefault();
-            const errorDiv = document.getElementById("error-message");
-            errorDiv.style.display = "none";
-            
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
-            let res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
-            const result = await res.json();
-            if (res.ok && result.token) {
-                localStorage.setItem('chatToken', result.token);
-                localStorage.setItem('chatUser', JSON.stringify(result.user));
-                window.location.href = "/chat.html";
-            } else {
-                errorDiv.textContent = "user credentials are incorrect";
-                errorDiv.style.display = "block";
-            }
+            await login({});
         });
 
-        function togglePasswordVisibility() {
+        window.togglePasswordVisibility = function() {
             const passwordInput = document.getElementById("password");
             const eyeIcon = document.getElementById("eye-icon");
             if (passwordInput.type === "password") {
@@ -63,7 +46,7 @@
                 passwordInput.type = "password";
                 eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
             }
-        }
+        };
     </script>
 </body>
 

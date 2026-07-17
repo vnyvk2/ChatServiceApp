@@ -3,12 +3,23 @@
  */
 import { showToast, setButtonLoading } from './ui.js';
 
-export async function login(app) {
-    const username = document.getElementById('login-username')?.value.trim();
-    const password = document.getElementById('login-password')?.value;
+export async function login(app = {}) {
+    const usernameInput = document.getElementById('login-username') || document.querySelector('input[name="username"]');
+    const passwordInput = document.getElementById('login-password') || document.querySelector('input[name="password"]');
+    const username = usernameInput?.value?.trim();
+    const password = passwordInput?.value;
+
+    const errorDiv = document.getElementById('error-message');
+    if (errorDiv) errorDiv.style.display = 'none';
 
     if (!username || !password) {
-        showToast('Please fill in all fields', 'error');
+        const msg = 'Please fill in all fields';
+        if (errorDiv) {
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+        } else {
+            showToast(msg, 'error');
+        }
         return;
     }
 
@@ -34,33 +45,64 @@ export async function login(app) {
             localStorage.setItem('chatToken', app.token);
             localStorage.setItem('chatUser', JSON.stringify(app.currentUser));
 
-            app.showChatSection();
-            showToast('Login successful!', 'success');
+            if (typeof app.showChatSection === 'function') {
+                app.showChatSection();
+                showToast('Login successful!', 'success');
+            } else {
+                window.location.href = '/chat.html';
+            }
         } else {
-            showToast(data.error || 'Login failed', 'error');
+            const errorMsg = data.error || 'Login failed';
+            if (errorDiv) {
+                errorDiv.textContent = errorMsg;
+                errorDiv.style.display = 'block';
+            } else {
+                showToast(errorMsg, 'error');
+            }
         }
     } catch (error) {
         console.error('Login error:', error);
-        showToast('Network error. Please try again.', 'error');
+        const netErr = 'Network error. Please try again.';
+        if (errorDiv) {
+            errorDiv.textContent = netErr;
+            errorDiv.style.display = 'block';
+        } else {
+            showToast(netErr, 'error');
+        }
     } finally {
         setButtonLoading('login', false);
     }
 }
 
-export async function register(app) {
-    const username = document.getElementById('register-username')?.value.trim();
-    const email = document.getElementById('register-email')?.value.trim();
-    const phoneNumber = document.getElementById('register-phone')?.value.trim();
-    const displayName = document.getElementById('register-displayname')?.value.trim();
-    const password = document.getElementById('register-password')?.value;
+export async function register(app = {}) {
+    const username = (document.getElementById('register-username') || document.querySelector('input[name="username"]'))?.value?.trim();
+    const email = (document.getElementById('register-email') || document.querySelector('input[name="email"]'))?.value?.trim();
+    const phoneNumber = (document.getElementById('register-phone') || document.querySelector('input[name="phoneNumber"]'))?.value?.trim();
+    const displayName = (document.getElementById('register-displayname') || document.querySelector('input[name="displayName"]'))?.value?.trim();
+    const password = (document.getElementById('register-password') || document.querySelector('input[name="password"]'))?.value;
+
+    const errorDiv = document.getElementById('error-message');
+    if (errorDiv) errorDiv.style.display = 'none';
 
     if (!username || !email || !displayName || !password) {
-        showToast('Please fill in all required fields', 'error');
+        const msg = 'Please fill in all required fields';
+        if (errorDiv) {
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+        } else {
+            showToast(msg, 'error');
+        }
         return;
     }
 
     if (password.length < 6) {
-        showToast('Password must be at least 6 characters', 'error');
+        const msg = 'Password must be at least 6 characters';
+        if (errorDiv) {
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+        } else {
+            showToast(msg, 'error');
+        }
         return;
     }
 
@@ -92,14 +134,30 @@ export async function register(app) {
             localStorage.setItem('chatToken', app.token);
             localStorage.setItem('chatUser', JSON.stringify(app.currentUser));
 
-            app.showChatSection();
-            showToast('Registration successful!', 'success');
+            if (typeof app.showChatSection === 'function') {
+                app.showChatSection();
+                showToast('Registration successful!', 'success');
+            } else {
+                window.location.href = '/chat.html';
+            }
         } else {
-            showToast(data.error || 'Registration failed', 'error');
+            const errorMsg = data.error || 'Registration failed';
+            if (errorDiv) {
+                errorDiv.textContent = errorMsg;
+                errorDiv.style.display = 'block';
+            } else {
+                showToast(errorMsg, 'error');
+            }
         }
     } catch (error) {
         console.error('Registration error:', error);
-        showToast('Network error. Please try again.', 'error');
+        const netErr = 'Network error. Please try again.';
+        if (errorDiv) {
+            errorDiv.textContent = netErr;
+            errorDiv.style.display = 'block';
+        } else {
+            showToast(netErr, 'error');
+        }
     } finally {
         setButtonLoading('register', false);
     }

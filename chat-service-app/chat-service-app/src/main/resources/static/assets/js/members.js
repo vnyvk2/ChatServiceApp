@@ -88,20 +88,20 @@ export function displayRoomMembers(app, data) {
             <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 0.9em; font-weight: 500;">Mute Entire Room</span>
                 <label class="switch" style="position: relative; display: inline-block; width: 34px; height: 20px;">
-                    <input type="checkbox" id="mute-room-toggle" ${allMembersMuted ? 'checked' : ''} onchange="chatApp.toggleRoomMute()">
+                    <input type="checkbox" id="mute-room-toggle" ${allMembersMuted ? 'checked' : ''}>
                     <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px;"></span>
                 </label>
             </div>
             <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center;">
-                <button onclick="chatApp.showRenameRoom()" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-light); background: white; cursor: pointer; width: 100%;">
+                <button id="admin-rename-group-btn" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-light); background: white; cursor: pointer; width: 100%;">
                     <i class="fas fa-pen"></i> Rename Group
                 </button>
             </div>
             <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; gap: 6px;">
-                <button onclick="chatApp.clearChat()" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fbbf24; background: #fffbeb; color: #92400e; cursor: pointer;">
+                <button id="admin-clear-chat-btn" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fbbf24; background: #fffbeb; color: #92400e; cursor: pointer;">
                     <i class="fas fa-broom"></i> Clear Chat
                 </button>
-                <button onclick="chatApp.deleteRoom()" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fca5a5; background: #fef2f2; color: #ef4444; cursor: pointer;">
+                <button id="admin-delete-room-btn" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fca5a5; background: #fef2f2; color: #ef4444; cursor: pointer;">
                     <i class="fas fa-trash"></i> Delete Room
                 </button>
             </div>
@@ -113,7 +113,7 @@ export function displayRoomMembers(app, data) {
     if (app.currentRoomType !== 'DIRECT_MESSAGE') {
         leaveRoomHtml = `
             <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: center;">
-                <button onclick="chatApp.leaveRoom('${app.currentRoom}')" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fca5a5; background: transparent; color: #ef4444; cursor: pointer; width: 100%;">
+                <button id="member-leave-room-btn" style="font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fca5a5; background: transparent; color: #ef4444; cursor: pointer; width: 100%;">
                     <i class="fas fa-sign-out-alt"></i> Leave Room
                 </button>
             </div>
@@ -122,7 +122,7 @@ export function displayRoomMembers(app, data) {
         if (!amIAdmin) {
             leaveRoomHtml = `
                 <div style="padding: 10px; border-bottom: 1px solid var(--border-light); display: flex; gap: 6px;">
-                    <button onclick="chatApp.clearChat()" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fbbf24; background: #fffbeb; color: #92400e; cursor: pointer;">
+                    <button id="member-clear-chat-btn" style="flex:1; font-size: 0.85rem; padding: 6px 12px; border-radius: 4px; border: 1px solid #fbbf24; background: #fffbeb; color: #92400e; cursor: pointer;">
                         <i class="fas fa-broom"></i> Clear Chat
                     </button>
                 </div>
@@ -131,6 +131,22 @@ export function displayRoomMembers(app, data) {
     }
 
     onlineUsers.innerHTML = roomMuteToggleHtml + leaveRoomHtml;
+
+    // Attach programmatic event listeners for room controls
+    const muteToggle = document.getElementById('mute-room-toggle');
+    if (muteToggle) muteToggle.addEventListener('change', () => app.toggleRoomMute());
+
+    const renameBtn = document.getElementById('admin-rename-group-btn');
+    if (renameBtn) renameBtn.addEventListener('click', () => app.showRenameRoom());
+
+    const clearBtn = document.getElementById('admin-clear-chat-btn') || document.getElementById('member-clear-chat-btn');
+    if (clearBtn) clearBtn.addEventListener('click', () => app.clearChat());
+
+    const deleteBtn = document.getElementById('admin-delete-room-btn');
+    if (deleteBtn) deleteBtn.addEventListener('click', () => app.deleteRoom());
+
+    const leaveBtn = document.getElementById('member-leave-room-btn');
+    if (leaveBtn) leaveBtn.addEventListener('click', () => app.leaveRoom(app.currentRoom));
 
     members.forEach(member => {
         const memberElement = document.createElement('div');
@@ -153,13 +169,13 @@ export function displayRoomMembers(app, data) {
         if (amIAdmin && member.username !== app.currentUser.username) {
             adminControls = `
                 <div class="member-admin-controls" style="margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap;">
-                    <button onclick="chatApp.toggleMemberMute('${member.id}')" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">
+                    <button class="action-btn-mute" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">
                         ${member.canSendMessages === false ? 'Unmute' : 'Mute'}
                     </button>
-                    <button onclick="chatApp.toggleAdminRole('${member.id}')" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">
+                    <button class="action-btn-role" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer;">
                         ${isAdmin ? 'Demote' : 'Promote'}
                     </button>
-                    <button onclick="chatApp.removeMember('${member.id}')" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5; background: #fef2f2; color: #ef4444; cursor: pointer;">
+                    <button class="action-btn-remove" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5; background: #fef2f2; color: #ef4444; cursor: pointer;">
                         Remove
                     </button>
                 </div>
@@ -178,6 +194,12 @@ export function displayRoomMembers(app, data) {
                 ${adminControls}
             </div>
         `;
+
+        if (amIAdmin && member.username !== app.currentUser.username) {
+            memberElement.querySelector('.action-btn-mute')?.addEventListener('click', () => app.toggleMemberMute(member.id));
+            memberElement.querySelector('.action-btn-role')?.addEventListener('click', () => app.toggleAdminRole(member.id));
+            memberElement.querySelector('.action-btn-remove')?.addEventListener('click', () => app.removeMember(member.id));
+        }
 
         onlineUsers.appendChild(memberElement);
     });
