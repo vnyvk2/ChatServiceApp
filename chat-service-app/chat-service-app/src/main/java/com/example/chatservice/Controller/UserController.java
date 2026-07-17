@@ -1,18 +1,16 @@
 package com.example.chatservice.Controller;
 
 import com.example.chatservice.Model.User;
-import com.example.chatservice.repository.UserRepository;
 import com.example.chatservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -25,13 +23,10 @@ import java.util.Optional;
 public class UserController {
 
     private final UserService userService;
-    private final UserRepository userRepository;
 
-    public UserController(UserService userService, UserRepository userRepository) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.userRepository = userRepository;
     }
-
 
     @GetMapping("/search")
     @Operation(summary = "Search users", description = "Searches for a user by username, email, or phone number with pagination.")
@@ -67,19 +62,16 @@ public class UserController {
         if (userDetails == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        try {
-            User user = userRepository.findByUsername(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            User updated = userService.updateUserProfile(
-                    user.getId(),
-                    updates.get("username"),
-                    updates.get("phoneNumber"),
-                    updates.get("email"));
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        User updated = userService.updateUserProfile(
+                user.getId(),
+                updates.get("username"),
+                updates.get("phoneNumber"),
+                updates.get("email"));
+        return ResponseEntity.ok(updated);
     }
+
+    // ---- Privacy Settings ----
 
     @GetMapping("/read-receipts")
     @Operation(summary = "Get read receipt setting", description = "Returns whether the authenticated user has read receipts enabled.")
@@ -87,9 +79,9 @@ public class UserController {
         if (userDetails == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return ResponseEntity.ok(Map.of("readReceiptsEnabled", user.isReadReceiptsEnabled()));
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        boolean enabled = userService.getReadReceiptsEnabled(user.getId());
+        return ResponseEntity.ok(Map.of("readReceiptsEnabled", enabled));
     }
 
     @PutMapping("/read-receipts")
@@ -100,19 +92,13 @@ public class UserController {
         if (userDetails == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        try {
-            User user = userRepository.findByUsername(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            Boolean enabled = body.get("readReceiptsEnabled");
-            if (enabled == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "readReceiptsEnabled is required"));
-            }
-            user.setReadReceiptsEnabled(enabled);
-            userRepository.save(user);
-            return ResponseEntity.ok(Map.of("readReceiptsEnabled", user.isReadReceiptsEnabled()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        Boolean enabled = body.get("readReceiptsEnabled");
+        if (enabled == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "readReceiptsEnabled is required"));
         }
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        boolean result = userService.toggleReadReceipts(user.getId(), enabled);
+        return ResponseEntity.ok(Map.of("readReceiptsEnabled", result));
     }
 
     @GetMapping("/online-status")
@@ -121,9 +107,9 @@ public class UserController {
         if (userDetails == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return ResponseEntity.ok(Map.of("showOnlineStatus", user.isShowOnlineStatus()));
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        boolean enabled = userService.getShowOnlineStatus(user.getId());
+        return ResponseEntity.ok(Map.of("showOnlineStatus", enabled));
     }
 
     @PutMapping("/online-status")
@@ -134,19 +120,13 @@ public class UserController {
         if (userDetails == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        try {
-            User user = userRepository.findByUsername(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            Boolean enabled = body.get("showOnlineStatus");
-            if (enabled == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "showOnlineStatus is required"));
-            }
-            user.setShowOnlineStatus(enabled);
-            userRepository.save(user);
-            return ResponseEntity.ok(Map.of("showOnlineStatus", user.isShowOnlineStatus()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        Boolean enabled = body.get("showOnlineStatus");
+        if (enabled == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "showOnlineStatus is required"));
         }
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        boolean result = userService.toggleOnlineStatus(user.getId(), enabled);
+        return ResponseEntity.ok(Map.of("showOnlineStatus", result));
     }
 
     @GetMapping("/last-seen-visibility")
@@ -155,9 +135,9 @@ public class UserController {
         if (userDetails == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return ResponseEntity.ok(Map.of("lastSeenVisible", user.isLastSeenVisible()));
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        boolean enabled = userService.getLastSeenVisible(user.getId());
+        return ResponseEntity.ok(Map.of("lastSeenVisible", enabled));
     }
 
     @PutMapping("/last-seen-visibility")
@@ -168,22 +148,16 @@ public class UserController {
         if (userDetails == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
-        try {
-            User user = userRepository.findByUsername(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            Boolean enabled = body.get("lastSeenVisible");
-            if (enabled == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "lastSeenVisible is required"));
-            }
-            user.setLastSeenVisible(enabled);
-            userRepository.save(user);
-            return ResponseEntity.ok(Map.of("lastSeenVisible", user.isLastSeenVisible()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        Boolean enabled = body.get("lastSeenVisible");
+        if (enabled == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "lastSeenVisible is required"));
         }
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        boolean result = userService.toggleLastSeenVisibility(user.getId(), enabled);
+        return ResponseEntity.ok(Map.of("lastSeenVisible", result));
     }
 
-    // ---- New Endpoints ----
+    // ---- CRUD Endpoints ----
 
     @GetMapping
     @Operation(summary = "Get all users", description = "Fetches a list of all registered users.")
@@ -206,30 +180,22 @@ public class UserController {
     public ResponseEntity<?> updateUser(
             @PathVariable String id,
             @RequestBody Map<String, String> updates) {
-        try {
-            Optional<User> userOpt = userService.findByIdOrUsername(id);
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            User updated = userService.updateUserProfile(
-                    userOpt.get().getId(),
-                    updates.get("username"),
-                    updates.get("phoneNumber"),
-                    updates.get("email"));
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        Optional<User> userOpt = userService.findByIdOrUsername(id);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
+        User updated = userService.updateUserProfile(
+                userOpt.get().getId(),
+                updates.get("username"),
+                updates.get("phoneNumber"),
+                updates.get("email"));
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete user by ID or username", description = "Deletes a user by their MongoDB ObjectId or username.")
     public ResponseEntity<?> deleteUser(@PathVariable String id) {
-        try {
-            userService.deleteByIdOrUsername(id);
-            return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        userService.deleteByIdOrUsername(id);
+        return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
     }
 }

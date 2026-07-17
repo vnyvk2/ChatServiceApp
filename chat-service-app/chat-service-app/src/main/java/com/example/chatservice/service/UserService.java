@@ -202,4 +202,57 @@ public class UserService {
             throw new ResourceNotFoundException("User not found with identifier: " + identifier);
         }
     }
+
+    // ---- Privacy Settings ----
+
+    /**
+     * Resolves a User entity from a username. Throws ResourceNotFoundException if not found.
+     */
+    public User resolveUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    public boolean getReadReceiptsEnabled(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return user.isReadReceiptsEnabled();
+    }
+
+    public boolean toggleReadReceipts(String userId, boolean enabled) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setReadReceiptsEnabled(enabled);
+        userRepository.save(user);
+        return user.isReadReceiptsEnabled();
+    }
+
+    public boolean getShowOnlineStatus(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return user.isShowOnlineStatus();
+    }
+
+    public boolean toggleOnlineStatus(String userId, boolean enabled) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setShowOnlineStatus(enabled);
+        userRepository.save(user);
+        return user.isShowOnlineStatus();
+    }
+
+    public boolean getLastSeenVisible(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return user.isLastSeenVisible();
+    }
+
+    public boolean toggleLastSeenVisibility(String userId, boolean enabled) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setLastSeenVisible(enabled);
+        userRepository.save(user);
+        return user.isLastSeenVisible();
+    }
 }
+

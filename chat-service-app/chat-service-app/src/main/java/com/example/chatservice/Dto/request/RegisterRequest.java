@@ -2,25 +2,29 @@ package com.example.chatservice.Dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.util.Set;
+public class RegisterRequest {
 
-public class SignupRequest {
     @NotBlank
     @Size(min = 3, max = 50)
     private String username;
 
     @NotBlank
-    @Size(max = 100)
     @Email
     private String email;
 
-    private Set<String> role;
+    @Pattern(regexp = "^$|^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+    private String phoneNumber;
 
     @NotBlank
-    @Size(min = 6, max = 40)
+    @Size(min = 6, max = 100)
     private String password;
+
+    @NotBlank
+    @Size(min = 1, max = 100)
+    private String displayName;
 
     public String getUsername() {
         return username;
@@ -38,6 +42,14 @@ public class SignupRequest {
         this.email = email;
     }
 
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
     public String getPassword() {
         return password;
     }
@@ -46,11 +58,11 @@ public class SignupRequest {
         this.password = password;
     }
 
-    public Set<String> getRole() {
-        return this.role;
+    public String getDisplayName() {
+        return displayName;
     }
 
-    public void setRole(Set<String> role) {
-        this.role = role;
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
 }

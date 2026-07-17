@@ -1,5 +1,7 @@
 package com.example.chatservice.service;
 
+import com.example.chatservice.Dto.response.MessageDto;
+import com.example.chatservice.Dto.response.MessageReceiptDto;
 import com.example.chatservice.Model.ChatRoom;
 import com.example.chatservice.Model.Message;
 import com.example.chatservice.Model.Message.MessageReceipt;
@@ -10,16 +12,19 @@ import com.example.chatservice.repository.ChatRoomRepository;
 import com.example.chatservice.repository.MessageRepository;
 import com.example.chatservice.repository.RoomMembershipRepository;
 import com.example.chatservice.repository.UserRepository;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -30,17 +35,20 @@ public class MessageService {
     private final ChatRoomRepository chatRoomRepository;
     private final RoomMembershipRepository membershipRepository;
     private final CryptoService cryptoService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public MessageService(MessageRepository messageRepository,
             UserRepository userRepository,
             ChatRoomRepository chatRoomRepository,
             RoomMembershipRepository membershipRepository,
-            CryptoService cryptoService) {
+            CryptoService cryptoService,
+            SimpMessagingTemplate messagingTemplate) {
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.chatRoomRepository = chatRoomRepository;
         this.membershipRepository = membershipRepository;
         this.cryptoService = cryptoService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public Message saveEncrypted(String roomId, String senderUsername, String content) {
@@ -263,8 +271,88 @@ public class MessageService {
         try {
             return cryptoService.decrypt(cipher);
         } catch (Exception e) {
-            System.err.println("Failed to decrypt message: " + e.getMessage());
             return "[Encrypted Message]"; // Fallback instead of failing the request
         }
+    }
+
+    // ---- DTO Mapping Methods ----
+
+    /**
+     * Returns a page of MessageDto with decrypted content, ready for the API response.
+     */
+    public Page<MessageDto> getMessageDtos(String roomId, String userId, int page, int size) {
+        Page<Message> messages = getMessages(roomId, userId, page, size);
+        return messages.map(this::mapToMessageDto);
+    }
+
+    /**
+     * Returns per-member receipt details as DTOs for a specific message.
+     */
+    public List<MessageReceiptDto> getReceiptDtos(String messageId) {
+        List<MessageReceipt> receipts = getReceipts(messageId);
+        return receipts.stream()
+                .map(r -> new MessageReceiptDto(
+                        r.getUserId(),
+                        r.getUsername(),
+                        r.getDisplayName(),
+                        r.getStatus() != null ? r.getStatus().toString() : "SENT",
+                        r.getDeliveredAt(),
+                        r.getSeenAt()))
+                .toList();
+    }
+
+    private MessageDto mapToMessageDto(Message msg) {
+        return new MessageDto(
+                msg.getId(),
+                new MessageDto.SenderDto(
+                        msg.getSender().getUsername(),
+                        msg.getSender().getDisplayName(),
+                        msg.getSender().getStatus()),
+                decrypt(msg.getEncryptedContent()),
+                msg.getStatus() != null ? msg.getStatus().toString() : "SENT",
+                msg.getCreatedAt(),
+                msg.getEditedAt());
+    }
+
+    // ---- Event Broadcasting ----
+
+    /**
+     * Marks all delivered and broadcasts status events for each room.
+     */
+    public int markAllDeliveredAndBroadcast(String userId) {
+        List<String[]> results = markAllAsDeliveredForUser(userId);
+        long currentTime = System.currentTimeMillis();
+        for (String[] res : results) {
+            String roomId = res[0];
+            List<String> msgIds = Arrays.asList(res[1].split(","));
+
+            Map<String, Object> statusEvent = new HashMap<>();
+            statusEvent.put("type", "MESSAGE_STATUS_UPDATE");
+            statusEvent.put("roomId", roomId);
+            statusEvent.put("messageIds", msgIds);
+            statusEvent.put("newStatus", "DELIVERED");
+            statusEvent.put("timestamp", currentTime);
+
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/status", statusEvent);
+        }
+        return results.size();
+    }
+
+    /**
+     * Edits a message and broadcasts the edit event.
+     */
+    public Message editMessageAndBroadcast(String roomId, String messageId, String userId, String newContent) {
+        Message updatedMsg = editMessage(messageId, userId, newContent);
+
+        Map<String, Object> editEvent = Map.of(
+                "type", "MESSAGE_EDITED",
+                "roomId", roomId,
+                "messageId", messageId,
+                "text", newContent,
+                "editedAt", updatedMsg.getEditedAt(),
+                "timestamp", System.currentTimeMillis());
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", editEvent);
+
+        return updatedMsg;
     }
 }

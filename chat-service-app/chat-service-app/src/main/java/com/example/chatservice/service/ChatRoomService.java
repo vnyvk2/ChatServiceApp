@@ -7,11 +7,13 @@ import com.example.chatservice.repository.ChatRoomRepository;
 import com.example.chatservice.repository.RoomMembershipRepository;
 import com.example.chatservice.repository.UserRepository;
 import org.springframework.lang.NonNull;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,15 +24,18 @@ public class ChatRoomService {
     private final RoomMembershipRepository membershipRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public ChatRoomService(ChatRoomRepository chatRoomRepository,
             RoomMembershipRepository membershipRepository,
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            SimpMessagingTemplate messagingTemplate) {
         this.chatRoomRepository = chatRoomRepository;
         this.membershipRepository = membershipRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public ChatRoom createRoom(String name, String description, ChatRoom.RoomType roomType,
@@ -406,5 +411,79 @@ public class ChatRoomService {
         }
         
         return membershipRepository.save(targetMembership);
+    }
+
+    // ---- Event Broadcasting ----
+
+    public void broadcastUserJoined(String roomId, User user) {
+        Map<String, Object> joinEvent = Map.of(
+                "type", "USER_JOINED",
+                "roomId", roomId,
+                "user", Map.of(
+                        "username", user.getUsername(),
+                        "displayName", user.getDisplayName()),
+                "message", user.getDisplayName() + " joined the group",
+                "timestamp", System.currentTimeMillis());
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", joinEvent);
+    }
+
+    public void broadcastUserLeft(String roomId, User user) {
+        Map<String, Object> leaveEvent = Map.of(
+                "type", "USER_LEFT",
+                "roomId", roomId,
+                "user", Map.of(
+                        "username", user.getUsername(),
+                        "displayName", user.getDisplayName()),
+                "message", user.getDisplayName() + " left the group",
+                "adminOnly", true,
+                "timestamp", System.currentTimeMillis());
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", leaveEvent);
+    }
+
+    public void broadcastUserKicked(String roomId, User admin, User kickedUser) {
+        Map<String, Object> kickEvent = Map.of(
+                "type", "USER_KICKED",
+                "roomId", roomId,
+                "userId", kickedUser.getId(),
+                "message", admin.getDisplayName() + " kicked " + kickedUser.getDisplayName(),
+                "timestamp", System.currentTimeMillis());
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", kickEvent);
+    }
+
+    public void broadcastRoomMuteToggled(String roomId, User admin, boolean allMembersMuted) {
+        Map<String, Object> event = Map.of(
+                "type", "ROOM_MUTE_TOGGLED",
+                "roomId", roomId,
+                "allMembersMuted", allMembersMuted,
+                "message", admin.getDisplayName() + (allMembersMuted ? " has muted the group" : " has unmuted the group"),
+                "timestamp", System.currentTimeMillis());
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", event);
+    }
+
+    public void broadcastRoomDeleted(String roomId, User user) {
+        Map<String, Object> deleteEvent = Map.of(
+                "type", "ROOM_DELETED",
+                "roomId", roomId,
+                "message", user.getDisplayName() + " deleted the room",
+                "timestamp", System.currentTimeMillis());
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", deleteEvent);
+    }
+
+    public void broadcastMessagesCleared(String roomId, User user) {
+        Map<String, Object> clearEvent = Map.of(
+                "type", "MESSAGES_CLEARED",
+                "roomId", roomId,
+                "message", user.getDisplayName() + " cleared the chat",
+                "timestamp", System.currentTimeMillis());
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", clearEvent);
+    }
+
+    public void broadcastMessageDeleted(String roomId, String messageId) {
+        Map<String, Object> deleteEvent = Map.of(
+                "type", "MESSAGE_DELETED",
+                "roomId", roomId,
+                "messageId", messageId,
+                "timestamp", System.currentTimeMillis());
+        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/events", deleteEvent);
     }
 }

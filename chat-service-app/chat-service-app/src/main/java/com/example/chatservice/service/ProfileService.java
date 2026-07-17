@@ -38,6 +38,29 @@ public class ProfileService {
         return profileRepository.findByUserId(userId);
     }
 
+    /**
+     * Returns a profile with visibility rules applied.
+     * If the viewer is not the profile owner, profile picture visibility settings are enforced.
+     */
+    public Profile getProfileForViewer(String userId, boolean isOwner) {
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    Profile emptyProfile = new Profile();
+                    emptyProfile.setUserId(userId);
+                    return emptyProfile;
+                });
+
+        if (!isOwner) {
+            String visibility = profile.getProfilePicVisibility();
+            if ("NOBODY".equals(visibility)) {
+                profile.setAvatarUrl(null);
+            }
+            // CONTACTS would need a contacts list - treat same as EVERYONE for now
+        }
+
+        return profile;
+    }
+
     public Profile updateProfile(String userId, Map<String, String> updates) {
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseGet(() -> {
