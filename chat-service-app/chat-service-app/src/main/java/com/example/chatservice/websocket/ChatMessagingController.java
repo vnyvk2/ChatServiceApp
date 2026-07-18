@@ -57,8 +57,14 @@ public class ChatMessagingController {
 
                 try {
                         String username = authentication.getName();
+                        String messageText = payload.getText();
                         System.out.println("👤 Sender: " + username);
-                        System.out.println("📝 Payload: " + payload.text());
+                        System.out.println("📝 Payload: " + messageText);
+
+                        if (messageText == null || messageText.isBlank()) {
+                                System.err.println("❌ Message content/text is empty!");
+                                return;
+                        }
 
                         User sender = userRepository.findByUsername(username)
                                         .orElseThrow(() -> new RuntimeException("User not found: " + username));
@@ -81,7 +87,7 @@ public class ChatMessagingController {
                         }
 
                         System.out.println("🔄 Saving message to DB...");
-                        Message savedMessage = messageService.saveEncrypted(roomId, username, payload.text());
+                        Message savedMessage = messageService.saveEncrypted(roomId, username, messageText);
                         System.out.println("✅ Message saved to database: " + savedMessage.getId());
 
                         Map<String, Object> messageEvent = new HashMap<>();
@@ -92,9 +98,12 @@ public class ChatMessagingController {
                                         "username", username,
                                         "displayName", sender.getDisplayName(),
                                         "status", sender.getStatus().toString()));
-                        messageEvent.put("text", payload.text());
+                        messageEvent.put("text", messageText);
+                        messageEvent.put("content", messageText);
                         messageEvent.put("messageStatus", savedMessage.getStatus().toString());
+                        messageEvent.put("status", savedMessage.getStatus().toString());
                         messageEvent.put("timestamp", System.currentTimeMillis());
+                        messageEvent.put("createdAt", System.currentTimeMillis());
 
                         System.out.println("📡 Broadcasting to /topic/rooms/" + roomId);
                         messagingTemplate.convertAndSend("/topic/rooms/" + roomId, messageEvent);
@@ -106,7 +115,8 @@ public class ChatMessagingController {
                         notificationEvent.put("type", "NEW_MESSAGE");
                         notificationEvent.put("roomId", roomId);
                         notificationEvent.put("sender", sender.getDisplayName());
-                        notificationEvent.put("text", payload.text());
+                        notificationEvent.put("text", messageText);
+                        notificationEvent.put("content", messageText);
                         notificationEvent.put("timestamp", System.currentTimeMillis());
 
                         for (com.example.chatservice.Model.RoomMembership member : members) {
@@ -276,7 +286,12 @@ public class ChatMessagingController {
         }
 
         // Payload record classes
-        public record MessagePayload(@NotBlank String text) {
+        public record MessagePayload(String text, String content) {
+                public String getText() {
+                        if (content != null && !content.isBlank()) return content;
+                        if (text != null && !text.isBlank()) return text;
+                        return null;
+                }
         }
 
         public record StatusPayload(@NotBlank String status) {

@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class UserService {
@@ -278,5 +279,46 @@ public class UserService {
             userRepository.save(user);
         });
     }
-}
 
+    // ---- Per-field Privacy Visibility Settings ----
+
+    private static final Set<String> VALID_VISIBILITY = Set.of("PUBLIC", "CONNECTIONS", "NOBODY");
+
+    public Map<String, String> getPrivacySettings(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return Map.of(
+                "usernameVisibility", user.getUsernameVisibility() != null ? user.getUsernameVisibility() : "PUBLIC",
+                "displayNameVisibility", user.getDisplayNameVisibility() != null ? user.getDisplayNameVisibility() : "PUBLIC",
+                "phoneVisibility", user.getPhoneVisibility() != null ? user.getPhoneVisibility() : "CONNECTIONS",
+                "emailVisibility", user.getEmailVisibility() != null ? user.getEmailVisibility() : "CONNECTIONS"
+        );
+    }
+
+    public Map<String, String> updatePrivacySettings(String userId, Map<String, String> settings) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (settings.containsKey("usernameVisibility") && VALID_VISIBILITY.contains(settings.get("usernameVisibility"))) {
+            user.setUsernameVisibility(settings.get("usernameVisibility"));
+        }
+        if (settings.containsKey("displayNameVisibility") && VALID_VISIBILITY.contains(settings.get("displayNameVisibility"))) {
+            user.setDisplayNameVisibility(settings.get("displayNameVisibility"));
+        }
+        if (settings.containsKey("phoneVisibility") && VALID_VISIBILITY.contains(settings.get("phoneVisibility"))) {
+            user.setPhoneVisibility(settings.get("phoneVisibility"));
+        }
+        if (settings.containsKey("emailVisibility") && VALID_VISIBILITY.contains(settings.get("emailVisibility"))) {
+            user.setEmailVisibility(settings.get("emailVisibility"));
+        }
+
+        userRepository.save(user);
+
+        return Map.of(
+                "usernameVisibility", user.getUsernameVisibility(),
+                "displayNameVisibility", user.getDisplayNameVisibility(),
+                "phoneVisibility", user.getPhoneVisibility(),
+                "emailVisibility", user.getEmailVisibility()
+        );
+    }
+}

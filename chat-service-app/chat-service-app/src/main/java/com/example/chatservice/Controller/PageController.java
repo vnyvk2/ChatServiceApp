@@ -6,18 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class PageController {
 
-    @GetMapping("/login")
-    public String loginPage() {
-        return "redirect:/index.html";
-    }
-
-    @GetMapping("/signup")
-    public String signupPage() {
-        return "redirect:/index.html";
-    }
-
-    @GetMapping("/chat")
-    public String chatPage() {
-        return "redirect:/chat.html";
+    @GetMapping(value = { "/", "/login", "/signup", "/register", "/chat" })
+    public String forwardToSpa() {
+        return "forward:/index.html";
     }
 }

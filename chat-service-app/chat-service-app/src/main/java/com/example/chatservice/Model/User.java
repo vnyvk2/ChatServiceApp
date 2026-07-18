@@ -48,6 +48,12 @@ public class User {
 
     private boolean lastSeenVisible = true;
 
+    // Per-field privacy visibility: PUBLIC, CONNECTIONS, NOBODY
+    private String usernameVisibility = "PUBLIC";
+    private String displayNameVisibility = "PUBLIC";
+    private String phoneVisibility = "CONNECTIONS";
+    private String emailVisibility = "CONNECTIONS";
+
     @CreatedDate
     private Instant createdAt;
 
@@ -168,5 +174,37 @@ public class User {
 
     public void setLastSeenVisible(boolean lastSeenVisible) {
         this.lastSeenVisible = lastSeenVisible;
+    }
+
+    public String getUsernameVisibility() {
+        return usernameVisibility;
+    }
+
+    public void setUsernameVisibility(String usernameVisibility) {
+        this.usernameVisibility = usernameVisibility;
+    }
+
+    public String getDisplayNameVisibility() {
+        return displayNameVisibility;
+    }
+
+    public void setDisplayNameVisibility(String displayNameVisibility) {
+        this.displayNameVisibility = displayNameVisibility;
+    }
+
+    public String getPhoneVisibility() {
+        return phoneVisibility;
+    }
+
+    public void setPhoneVisibility(String phoneVisibility) {
+        this.phoneVisibility = phoneVisibility;
+    }
+
+    public String getEmailVisibility() {
+        return emailVisibility;
+    }
+
+    public void setEmailVisibility(String emailVisibility) {
+        this.emailVisibility = emailVisibility;
     }
 }

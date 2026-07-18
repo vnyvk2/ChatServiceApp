@@ -157,6 +157,32 @@ public class UserController {
         return ResponseEntity.ok(Map.of("lastSeenVisible", result));
     }
 
+    // ---- Per-field Privacy Visibility ----
+
+    @GetMapping("/privacy")
+    @Operation(summary = "Get privacy settings", description = "Returns the authenticated user's per-field privacy visibility settings (username, displayName, phone, email).")
+    public ResponseEntity<?> getPrivacySettings(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        Map<String, String> settings = userService.getPrivacySettings(user.getId());
+        return ResponseEntity.ok(settings);
+    }
+
+    @PutMapping("/privacy")
+    @Operation(summary = "Update privacy settings", description = "Updates per-field visibility settings. Each field can be set to PUBLIC, CONNECTIONS, or NOBODY.")
+    public ResponseEntity<?> updatePrivacySettings(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, String> body) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        User user = userService.resolveUserByUsername(userDetails.getUsername());
+        Map<String, String> result = userService.updatePrivacySettings(user.getId(), body);
+        return ResponseEntity.ok(result);
+    }
+
     // ---- CRUD Endpoints ----
 
     @GetMapping

@@ -26,7 +26,7 @@ public class Profile {
 
     private String bio;
 
-    private String profilePicVisibility = "EVERYONE";
+    private String profilePicVisibility = "PUBLIC";
 
     @CreatedDate
     private Instant createdAt;
