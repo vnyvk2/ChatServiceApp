@@ -2,6 +2,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "ChatServiceApplication",
+            "request": "launch",
+            "mainClass": "com.example.chatservice.ChatServiceApplication",
+            "projectName": ""
+        },
+        {
+            "type": "java",
             "name": "Spring Boot-ChatServiceApplication<chat-service-app>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
