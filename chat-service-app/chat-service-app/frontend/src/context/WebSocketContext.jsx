@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import SockJS from 'sockjs-client';
-import Stomp from 'stompjs';
+import { Stomp } from '@stomp/stompjs';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
@@ -129,7 +129,7 @@ export const WebSocketProvider = ({ children }) => {
     stompClientRef.current.send(
       `/app/rooms/${roomId}/send`,
       {},
-      JSON.stringify({ content, type, replyToId })
+      JSON.stringify({ content, text: content, type, replyToId })
     );
   }, []);
 

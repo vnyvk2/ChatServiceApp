@@ -1,0 +1,171 @@
+/* ==========================================================================
+   1. Design System & Base Variables
+   ========================================================================== */
+:root {
+    /* Shades of Blue & White */
+    --primary: #3b82f6;
+    /* Blue-500 */
+    --primary-dark: #2563eb;
+    /* Blue-600 */
+    --primary-light: #60a5fa;
+    /* Blue-400 */
+    --accent: #eff6ff;
+    /* Blue-50 */
+
+    --bg-body: #f0f9ff;
+    /* Lightest Blue */
+    --bg-surface: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+
+    --text-primary: #1e293b;
+    /* Slate-800 */
+    --text-secondary: #64748b;
+    /* Slate-500 */
+    --text-on-primary: #ffffff;
+
+    --border-light: #e2e8f0;
+    --focus-ring: rgba(59, 130, 246, 0.4);
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Chat Theme Defaults (Classic) */
+    --chat-bg: #f8fafc;
+    --chat-bg-pattern: none;
+    --chat-bubble-mine: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    --chat-bubble-theirs: #ffffff;
+    --chat-bubble-text-mine: #ffffff;
+    --chat-bubble-text-theirs: #1e293b;
+    --chat-bubble-shadow-mine: 0 2px 8px rgba(59, 130, 246, 0.25);
+    --chat-bubble-shadow-theirs: 0 1px 4px rgba(0, 0, 0, 0.08);
+    --chat-input-bg: #ffffff;
+    --chat-header-bg: #ffffff;
+}
+
+/* ==========================================================================
+   2. Chat Themes
+   ========================================================================== */
+
+/* Classic (Default) — already defined in :root */
+[data-chat-theme="classic"] {
+    --chat-bg: #f8fafc;
+    --chat-bg-pattern: none;
+    --chat-bubble-mine: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    --chat-bubble-theirs: #ffffff;
+    --chat-bubble-text-mine: #ffffff;
+    --chat-bubble-text-theirs: #1e293b;
+    --chat-bubble-shadow-mine: 0 2px 8px rgba(59, 130, 246, 0.25);
+    --chat-bubble-shadow-theirs: 0 1px 4px rgba(0, 0, 0, 0.08);
+    --chat-input-bg: #ffffff;
+    --chat-header-bg: #ffffff;
+}
+
+/* Ocean */
+[data-chat-theme="ocean"] {
+    --chat-bg: linear-gradient(180deg, #0c4a6e 0%, #0e7490 50%, #155e75 100%);
+    --chat-bg-pattern: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    --chat-bubble-mine: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    --chat-bubble-theirs: rgba(255, 255, 255, 0.12);
+    --chat-bubble-text-mine: #ffffff;
+    --chat-bubble-text-theirs: #e0f2fe;
+    --chat-bubble-shadow-mine: 0 2px 12px rgba(6, 182, 212, 0.35);
+    --chat-bubble-shadow-theirs: 0 1px 4px rgba(0, 0, 0, 0.15);
+    --chat-input-bg: rgba(255, 255, 255, 0.1);
+    --chat-header-bg: rgba(12, 74, 110, 0.95);
+}
+
+/* Midnight */
+[data-chat-theme="midnight"] {
+    --chat-bg: linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    --chat-bg-pattern: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%239C92AC' fill-opacity='0.04' fill-rule='evenodd'%3E%3Cpath d='m0 40 40-40H20L0 20zM40 0v20L20 40h20z'/%3E%3C/g%3E%3C/svg%3E");
+    --chat-bubble-mine: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    --chat-bubble-theirs: rgba(255, 255, 255, 0.08);
+    --chat-bubble-text-mine: #ffffff;
+    --chat-bubble-text-theirs: #c7d2fe;
+    --chat-bubble-shadow-mine: 0 2px 12px rgba(99, 102, 241, 0.4);
+    --chat-bubble-shadow-theirs: 0 1px 4px rgba(0, 0, 0, 0.2);
+    --chat-input-bg: rgba(255, 255, 255, 0.07);
+    --chat-header-bg: rgba(15, 23, 42, 0.95);
+}
+
+/* Lavender */
+[data-chat-theme="lavender"] {
+    --chat-bg: linear-gradient(180deg, #faf5ff 0%, #f3e8ff 50%, #ede9fe 100%);
+    --chat-bg-pattern: none;
+    --chat-bubble-mine: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+    --chat-bubble-theirs: #ffffff;
+    --chat-bubble-text-mine: #ffffff;
+    --chat-bubble-text-theirs: #3b0764;
+    --chat-bubble-shadow-mine: 0 2px 10px rgba(168, 85, 247, 0.3);
+    --chat-bubble-shadow-theirs: 0 1px 4px rgba(147, 51, 234, 0.08);
+    --chat-input-bg: #ffffff;
+    --chat-header-bg: rgba(250, 245, 255, 0.95);
+}
+
+/* Forest */
+[data-chat-theme="forest"] {
+    --chat-bg: linear-gradient(180deg, #14532d 0%, #166534 50%, #15803d 100%);
+    --chat-bg-pattern: url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    --chat-bubble-mine: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    --chat-bubble-theirs: rgba(255, 255, 255, 0.1);
+    --chat-bubble-text-mine: #ffffff;
+    --chat-bubble-text-theirs: #dcfce7;
+    --chat-bubble-shadow-mine: 0 2px 10px rgba(34, 197, 94, 0.35);
+    --chat-bubble-shadow-theirs: 0 1px 4px rgba(0, 0, 0, 0.15);
+    --chat-input-bg: rgba(255, 255, 255, 0.1);
+    --chat-header-bg: rgba(20, 83, 45, 0.95);
+}
+
+/* Sunset */
+[data-chat-theme="sunset"] {
+    --chat-bg: linear-gradient(180deg, #fef3c7 0%, #fed7aa 40%, #fecaca 100%);
+    --chat-bg-pattern: none;
+    --chat-bubble-mine: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    --chat-bubble-theirs: rgba(255, 255, 255, 0.85);
+    --chat-bubble-text-mine: #ffffff;
+    --chat-bubble-text-theirs: #7c2d12;
+    --chat-bubble-shadow-mine: 0 2px 10px rgba(249, 115, 22, 0.3);
+    --chat-bubble-shadow-theirs: 0 1px 4px rgba(234, 88, 12, 0.08);
+    --chat-input-bg: rgba(255, 255, 255, 0.75);
+    --chat-header-bg: rgba(254, 243, 199, 0.95);
+}
+
+/* Dark theme text adjustments for dark backgrounds */
+[data-chat-theme="ocean"],
+[data-chat-theme="midnight"],
+[data-chat-theme="forest"] {
+    --chat-input-text: #f1f5f9;
+    --chat-input-placeholder: rgba(255, 255, 255, 0.4);
+    --chat-input-border: rgba(255, 255, 255, 0.15);
+    --chat-header-text: #f1f5f9;
+    --chat-header-subtext: rgba(255, 255, 255, 0.6);
+    --chat-header-border: rgba(255, 255, 255, 0.1);
+    --chat-typing-color: rgba(255, 255, 255, 0.6);
+    --chat-time-color-mine: rgba(255, 255, 255, 0.7);
+    --chat-time-color-theirs: rgba(255, 255, 255, 0.5);
+}
+
+/* Light theme text defaults */
+[data-chat-theme="classic"],
+[data-chat-theme="lavender"],
+[data-chat-theme="sunset"] {
+    --chat-input-text: #1e293b;
+    --chat-input-placeholder: #94a3b8;
+    --chat-input-border: #e2e8f0;
+    --chat-header-text: #1e293b;
+    --chat-header-subtext: #64748b;
+    --chat-header-border: #e2e8f0;
+    --chat-typing-color: #64748b;
+    --chat-time-color-mine: rgba(255, 255, 255, 0.8);
+    --chat-time-color-theirs: #94a3b8;
+}

@@ -77,7 +77,8 @@ public class ProfileService {
         }
         if (updates.containsKey("profilePicVisibility")) {
             String visibility = updates.get("profilePicVisibility");
-            if ("EVERYONE".equals(visibility) || "CONTACTS".equals(visibility) || "NOBODY".equals(visibility)) {
+            if ("EVERYONE".equals(visibility) || "CONTACTS".equals(visibility) || "NOBODY".equals(visibility) ||
+                "PUBLIC".equals(visibility) || "CONNECTIONS".equals(visibility)) {
                 profile.setProfilePicVisibility(visibility);
             }
         }

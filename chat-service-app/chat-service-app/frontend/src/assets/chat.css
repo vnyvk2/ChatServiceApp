@@ -403,3 +403,12 @@
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
+/* Message actions appear on hover */
+.message-container:hover .msg-actions {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.chat-bubble:hover {
+    transform: translateY(-1px);
+}
