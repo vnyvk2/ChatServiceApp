@@ -1,8 +1,9 @@
 # 🗨️ Chat Service Pro
-A high-performance, real-time messaging engine built with Spring Boot 3.3 and MongoDB. Designed for scalability, security, and seamless user experiences.
+A high-performance, real-time full-stack messaging engine built with **Spring Boot 4.1.0**, **MongoDB**, and **React**. Designed for scalability, security, and seamless user experiences.
 
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![MongoDB](https://img.shields.io/badge/MongoDB-NoSQL-blue.svg)](https://www.mongodb.com/)
+[![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
 [![WebSocket](https://img.shields.io/badge/WebSocket-STOMP-orange.svg)](https://spring.io/guides/gs/messaging-stomp-websocket/)
 
 ---
@@ -19,6 +20,7 @@ A high-performance, real-time messaging engine built with Spring Boot 3.3 and Mo
   - RBAC (Role-Based Access Control) for room management.
   - AES-256 encryption support for sensitive data.
 - **📊 Real-time Presence**: Active status tracking (Online, Away, Offline) with "Last Seen" timestamps.
+- **🎨 Modern React UI**: A responsive, fast, and feature-rich frontend integrated seamlessly into the Spring Boot backend.
 - **🛠️ Self-Documenting API**: Integrated **Swagger/OpenAPI** UI for effortless developer onboarding.
 - **📦 Persistent Storage**: Distributed NoSQL architecture using **MongoDB** for high-volume message history.
 
@@ -28,7 +30,7 @@ A high-performance, real-time messaging engine built with Spring Boot 3.3 and Mo
 
 ### Backend Architecture
 - **Java 17** (LTS) - Core language
-- **Spring Boot 3.3.0** - Core framework
+- **Spring Boot 4.1.0** - Core framework
 - **Spring Data MongoDB** - Scalable NoSQL persistence
 - **Spring Security** - JWT & OAuth2-ready security layer
 - **WebSocket & SockJS** - Real-time full-duplex communication
@@ -36,10 +38,10 @@ A high-performance, real-time messaging engine built with Spring Boot 3.3 and Mo
 - **Maven** - Dependency & build lifecycle management
 
 ### Frontend Implementation
-- **Vanilla JS (ES6+)** - High-performance reactive client
-- **HTML5 & CSS3** - Modern, responsive UI/UX
-- **Stomp.js** - WebSocket client library
-- **SockJS-client** - WebSocket fallback support
+- **React (Vite)** - High-performance reactive client
+- **React Contexts** - Efficient state management for Auth and WebSockets
+- **Stomp.js & SockJS-client** - WebSocket client libraries
+- **Modern CSS** - Responsive UI/UX with dynamic themes and privacy controls
 
 ---
 
@@ -48,13 +50,14 @@ A high-performance, real-time messaging engine built with Spring Boot 3.3 and Mo
 ### Prerequisites
 - **Java 17** or higher
 - **MongoDB 6.0+** (Local or Atlas)
+- **Node.js (v20+)** (Required for the automated React build)
 - **Maven 3.8+**
 
 ### 1. Project Setup
 ```bash
 # Clone the repository
 git clone https://github.com/vnyvk2/ChatServiceApp.git
-cd chat-service-app/chat-service-app/chat-service-app
+cd ChatServiceApp
 ```
 
 ### 2. Configuration
@@ -71,27 +74,32 @@ app.jwt.expirationMs=86400000
 ```
 
 ### 3. Build & Launch
-```bash
-# Build the application
-mvn clean install
+This project is configured as a full-stack Maven application. When you run the Maven build, it will **automatically** install npm dependencies, build the React frontend via Vite, and package it into the Spring Boot static resources.
 
-# Run the service
-mvn spring-boot:run
+```bash
+# Clean, build the React frontend, and run the Spring Boot service
+mvn clean spring-boot:run
 ```
+
+Once running, access the application at 👉 **http://localhost:8081**
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-com.example.chatservice
-├── config/          # Security, WebSocket, and Bean configurations
-├── Controller/      # REST API Endpoints (Auth, User, Room, Message)
-├── Dto/             # Data Transfer Objects (Request/Response)
-├── Model/           # MongoDB Document Entities (User, Message, ChatRoom)
-├── repository/      # Spring Data MongoDB Repositories
-├── service/         # Business Logic & Orchestration
-└── websocket/       # STOMP Event Handlers
+ChatServiceApp/
+├── frontend/        # React Application (Vite, Components, Contexts)
+├── src/             # Spring Boot Java Application
+│   ├── config/      # Security, WebSocket, and Bean configurations
+│   ├── web/         # REST API Endpoints (Auth, User, Room, Message)
+│   ├── Dto/         # Data Transfer Objects (Request/Response)
+│   ├── Model/       # MongoDB Document Entities (User, Message, ChatRoom)
+│   ├── repository/  # Spring Data MongoDB Repositories
+│   ├── service/     # Business Logic & Orchestration
+│   └── websocket/   # STOMP Event Handlers
+├── uploads/         # User uploaded assets (avatars)
+└── pom.xml          # Maven Configuration
 ```
 
 ---
@@ -127,5 +135,4 @@ Once the server is running, explore the interactive API docs at:
 Developed by **Vinay (vny.vk2@gmail.com)**.  
 For any issues or enhancements, please open a PR or contact support.
 
-**Build with ❤️ using Spring Boot & MongoDB**
-
+**Built with ❤️ using Spring Boot, React & MongoDB**
