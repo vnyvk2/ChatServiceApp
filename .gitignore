@@ -1,0 +1,21 @@
+# Build output
+target/
+node_modules/
+dist/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# OS junk
+__MACOSX/
+.DS_Store
+Thumbs.db
+._*
+
+# Uploads (user data, not source code)
+uploads/
+
+# Test output
+register_output.txt
