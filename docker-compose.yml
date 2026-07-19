@@ -2,19 +2,13 @@
 version: '3.8'
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: chatservice-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: chatservice
-      MYSQL_USER: chatuser
-      MYSQL_PASSWORD: chatpass
+  mongodb:
+    image: mongo:6.0
+    container_name: chatservice-mongodb
     ports:
-      - "3306:3306"
+      - "27017:27017"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mongodb_data:/data/db
     networks:
       - chatservice-network
     restart: unless-stopped
@@ -23,19 +17,23 @@ services:
     build: .
     container_name: chatservice-app
     depends_on:
-      - mysql
+      - mongodb
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/chatservice?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: chatuser
-      SPRING_DATASOURCE_PASSWORD: chatpass
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/chatservice
+      APP_SECURITY_ENABLED: "true"
+      # For production, replace these with real secrets in your host environment!
+      SECURITY_USER_NAME: admin
+      SECURITY_USER_PASSWORD: admin
+      APP_JWT_SECRET: hyIy1fm6pgbN4k5M64NhSTJlduzHQHchgLziz3AoNec=
+      APP_ENCRYPTION_KEY: oYI7n/41gZhzT+jSSiulAzEwXDrVONpYuNc+t1OskG8=
     ports:
-      - "8080:8080"
+      - "8081:8081"
     networks:
       - chatservice-network
     restart: unless-stopped
 
 volumes:
-  mysql_data:
+  mongodb_data:
 
 networks:
   chatservice-network:
